@@ -20,6 +20,23 @@ export async function firstServiceId(stylist: GlamerClient): Promise<string> {
   return id;
 }
 
+/**
+ * The stylist's bookable business location id. Bookings need `locationType:
+ * at_stylist` + this id — which is the underlying catalog location id
+ * (`location.id`), not the work-location wrapper id.
+ */
+export async function firstStylistLocationId(stylist: GlamerClient): Promise<string> {
+  const { data, response } = await stylist.GET('/me/stylist/locations');
+  if (!response.ok) {
+    throw new Error(`GET /me/stylist/locations failed (HTTP ${response.status})`);
+  }
+  const id = data?.data?.[0]?.location?.id;
+  if (!id) {
+    throw new Error('Test stylist has no work location; add one in UAT first.');
+  }
+  return id;
+}
+
 /** Start time (ISO) of the first available slot for a stylist over the next `days`. */
 export async function firstAvailableSlotStart(
   api: GlamerClient,

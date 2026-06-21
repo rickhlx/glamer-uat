@@ -11,6 +11,7 @@ test.describe('A-6 payments', () => {
     stylistApi,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     // Book and confirm a real appointment first.
     const created = await clientApi.POST('/appointments', {
@@ -18,6 +19,8 @@ test.describe('A-6 payments', () => {
         username: env.stylist.username,
         services: [{ id: serviceId }],
         startTime: slotStart,
+        locationType: 'at_stylist',
+        locationId: stylistLocationId,
       },
     });
     const id = created.data!.id;

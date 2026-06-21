@@ -10,6 +10,7 @@ test.describe('X-2 stylist declines', () => {
     api,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     // Client requests a booking.
     const created = await clientApi.POST('/appointments', {
@@ -17,6 +18,8 @@ test.describe('X-2 stylist declines', () => {
         username: env.stylist.username,
         services: [{ id: serviceId }],
         startTime: slotStart,
+        locationType: 'at_stylist',
+        locationId: stylistLocationId,
       },
     });
     const id = created.data!.id;

@@ -56,6 +56,46 @@ Severities follow [principles.md](./principles.md).
 
 ---
 
+## F5 — `POST /appointments` returns `500` for missing/invalid location
+
+- **Severity:** P3 (minor) — validation surfaced as a server error.
+- **Endpoint:** `POST /appointments`.
+- **Actual:** with `locationType`/`locationId` omitted →
+  `500 "appointment missing location reference for snapshot capture"`. With a
+  wrong location id → `500 "failed to load location <id>: no rows in result set"`.
+- **Expected:** `400 Bad Request` for missing/invalid location.
+- **Note:** the working request is `locationType: at_stylist` + `locationId` =
+  the **catalog** location id (`location.id` from `/me/stylist/locations`), not
+  the work-location wrapper id.
+
+---
+
+## F6 — `POST /me/register` returns `500` on duplicate, not `409`
+
+- **Severity:** P3 (minor).
+- **Endpoint:** `POST /me/register`.
+- **Actual:** re-registering an existing email →
+  `500 "duplicate key value violates unique constraint idx_users_email_unique"`.
+- **Expected:** `409 Conflict` (or idempotent success).
+
+---
+
+## F7 — Booking `500`s when the client has no client profile (blocker)
+
+- **Severity:** P1 for UAT (blocks all booking journeys) — likely P2 product bug.
+- **Endpoint:** `POST /appointments`.
+- **Actual:** for an authenticated client whose account lacks a client-profile
+  record → `500 "failed to load client profile: client - client not found"`.
+  `POST /me/register` cannot repair it (F6 duplicate-email 500).
+- **Impact:** the test client account (`rickhl+client@`) was created without a
+  client profile, so no booking can be created.
+- **Action (UAT data):** recreate the client through the normal web sign-up flow
+  (which provisions the client profile), or have the backend create the profile
+  row. Then A-3 / A-4 / A-6 and the X-* booking journeys unblock.
+- **Backend finding:** booking should return a clear `4xx` here, not a `500`.
+
+---
+
 ## F3 — (resolved as test-data) Client account had a stylist profile
 
 - Not a backend bug: the UAT "client" account (`ricardo_client`) was mistakenly set up

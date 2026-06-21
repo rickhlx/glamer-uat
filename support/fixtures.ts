@@ -3,7 +3,11 @@ import './schema.js'; // registers the toMatchSpec matcher
 import { env } from './env.js';
 import { makeApiClient, type GlamerClient } from './api-client.js';
 import { clientApi as makeClientApi, stylistApi as makeStylistApi } from './auth.js';
-import { firstServiceId, firstAvailableSlotStart } from './discovery.js';
+import {
+  firstServiceId,
+  firstAvailableSlotStart,
+  firstStylistLocationId,
+} from './discovery.js';
 
 /**
  * Shared fixtures. Tests own their data and lean on these for setup
@@ -21,6 +25,8 @@ interface GlamerFixtures {
   serviceId: string;
   /** ISO start time of a real available slot for the test stylist. */
   slotStart: string;
+  /** The stylist's bookable business location id (for at_stylist bookings). */
+  stylistLocationId: string;
 }
 
 export const test = base.extend<GlamerFixtures>({
@@ -38,6 +44,9 @@ export const test = base.extend<GlamerFixtures>({
   },
   slotStart: async ({ api }, use) => {
     await use(await firstAvailableSlotStart(api, env.stylist.username));
+  },
+  stylistLocationId: async ({ stylistApi }, use) => {
+    await use(await firstStylistLocationId(stylistApi));
   },
 });
 

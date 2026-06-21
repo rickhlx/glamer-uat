@@ -10,6 +10,7 @@ test.describe('A-3 appointment lifecycle', () => {
     stylistApi,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     // Client books a real service into a real available slot.
     const created = await clientApi.POST('/appointments', {
@@ -17,6 +18,8 @@ test.describe('A-3 appointment lifecycle', () => {
         username: env.stylist.username,
         services: [{ id: serviceId }],
         startTime: slotStart,
+        locationType: 'at_stylist',
+        locationId: stylistLocationId,
       },
     });
     expect(created.response.status).toBe(201);
@@ -37,6 +40,7 @@ test.describe('A-3 appointment lifecycle', () => {
     stylistApi,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     // Book a real appointment (status: requested)...
     const created = await clientApi.POST('/appointments', {
@@ -44,6 +48,8 @@ test.describe('A-3 appointment lifecycle', () => {
         username: env.stylist.username,
         services: [{ id: serviceId }],
         startTime: slotStart,
+        locationType: 'at_stylist',
+        locationId: stylistLocationId,
       },
     });
     const id = created.data!.id;

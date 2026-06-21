@@ -9,6 +9,7 @@ test.describe('X-3 client cancels booking', () => {
     stylistApi,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     // Client books then cancels (DELETE /appointments/{id} is the client cancel).
     const created = await clientApi.POST('/appointments', {
@@ -16,6 +17,8 @@ test.describe('X-3 client cancels booking', () => {
         username: env.stylist.username,
         services: [{ id: serviceId }],
         startTime: slotStart,
+        locationType: 'at_stylist',
+        locationId: stylistLocationId,
       },
     });
     const id = created.data!.id;

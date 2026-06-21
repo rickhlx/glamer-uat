@@ -24,11 +24,14 @@ test.describe('A-4 availability', () => {
     clientApi,
     serviceId,
     slotStart,
+    stylistLocationId,
   }) => {
     const body = {
       username: env.stylist.username,
       services: [{ id: serviceId }],
       startTime: slotStart,
+      locationType: 'at_stylist' as const,
+      locationId: stylistLocationId,
     };
     const [first, second] = await Promise.all([
       clientApi.POST('/appointments', { body }),
