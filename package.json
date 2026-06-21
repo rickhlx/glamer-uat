@@ -1,0 +1,29 @@
+{
+  "name": "glamer-uat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Black-box UAT suite for Glamer (REST API, web client, iOS stylist app).",
+  "type": "module",
+  "scripts": {
+    "gen:types": "openapi-typescript spec/glamer.openapi.yaml -o spec/glamer.d.ts",
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:web": "playwright test --project=web",
+    "test:cross": "playwright test --project=cross",
+    "test:critical": "playwright test --grep @critical",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "dotenv": "^16.4.7",
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.7.2",
+    "yaml": "^2.6.1"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.3",
+    "openapi-response-validator": "^12.1.3"
+  }
+}

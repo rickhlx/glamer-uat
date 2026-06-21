@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+spec/glamer.d.ts
+*.log
+.DS_Store

@@ -1,0 +1,312 @@
+openapi: 3.0.3
+info:
+  title: Glamer API
+  version: 0.1.0-placeholder
+  description: >
+    PLACEHOLDER spec for the Glamer p2p stylist booking platform. Replace with the
+    real OpenAPI document. Shapes here are plausible defaults so the UAT scaffold
+    (type generation + response validation) works end to end before the real spec lands.
+servers:
+  - url: https://api.uat.glamer.example
+    description: UAT
+tags:
+  - name: auth
+  - name: stylists
+  - name: availability
+  - name: bookings
+  - name: payments
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Authenticate a client or stylist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthToken' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Current authenticated principal
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /stylists:
+    get:
+      tags: [stylists]
+      operationId: listStylists
+      summary: Browse stylists
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: A list of stylists
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Stylist' }
+
+  /stylists/{stylistId}:
+    get:
+      tags: [stylists]
+      operationId: getStylist
+      summary: View a stylist profile
+      parameters:
+        - { name: stylistId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Stylist profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stylist' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /stylists/{stylistId}/availability:
+    get:
+      tags: [availability]
+      operationId: getAvailability
+      summary: Available slots for a stylist
+      parameters:
+        - { name: stylistId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Slot' }
+    put:
+      tags: [availability]
+      operationId: setAvailability
+      summary: Stylist sets their availability
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: stylistId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/Slot' }
+      responses:
+        '200':
+          description: Updated availability
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Slot' }
+        '403':
+          description: Forbidden (not the owning stylist)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings:
+    post:
+      tags: [bookings]
+      operationId: createBooking
+      summary: Client requests a booking
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBookingRequest' }
+      responses:
+        '201':
+          description: Booking requested
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '402':
+          description: Payment failed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Slot no longer available
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings/{bookingId}:
+    get:
+      tags: [bookings]
+      operationId: getBooking
+      summary: Get a booking
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bookingId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The booking
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '403':
+          description: Forbidden (not a participant)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /bookings/{bookingId}/transition:
+    post:
+      tags: [bookings]
+      operationId: transitionBooking
+      summary: Move a booking through its lifecycle (accept/decline/cancel/complete)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bookingId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransitionRequest' }
+      responses:
+        '200':
+          description: Booking after transition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthToken:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [client, stylist] }
+        name: { type: string }
+    Stylist:
+      type: object
+      required: [id, name, services]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        bio: { type: string }
+        services:
+          type: array
+          items: { $ref: '#/components/schemas/Service' }
+    Service:
+      type: object
+      required: [id, name, priceCents, durationMinutes]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        priceCents: { type: integer }
+        durationMinutes: { type: integer }
+    Slot:
+      type: object
+      required: [start, end, available]
+      properties:
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        available: { type: boolean }
+    CreateBookingRequest:
+      type: object
+      required: [stylistId, serviceId, slotStart]
+      properties:
+        stylistId: { type: string }
+        serviceId: { type: string }
+        slotStart: { type: string, format: date-time }
+        paymentToken: { type: string }
+    Booking:
+      type: object
+      required: [id, status, stylistId, clientId, serviceId, slotStart, priceCents]
+      properties:
+        id: { type: string }
+        status:
+          type: string
+          enum: [requested, accepted, declined, cancelled, completed]
+        stylistId: { type: string }
+        clientId: { type: string }
+        serviceId: { type: string }
+        slotStart: { type: string, format: date-time }
+        priceCents: { type: integer }
+    TransitionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [accept, decline, cancel, complete]
+        reason: { type: string }
