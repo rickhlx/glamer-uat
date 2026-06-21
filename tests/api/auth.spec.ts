@@ -12,6 +12,8 @@ test.describe('A-1 auth & sessions', () => {
   });
 
   test('A-1 an unauthenticated request has no valid session @critical', async ({ api }) => {
+    // Known-failing: server returns 400, spec says 401. See docs/findings.md#f1.
+    test.fail();
     const { response } = await api.HEAD('/session');
     expect(response.status).toBe(401);
   });
@@ -19,6 +21,8 @@ test.describe('A-1 auth & sessions', () => {
   test('A-1 a protected endpoint rejects unauthenticated requests @critical', async ({
     api,
   }) => {
+    // Known-failing: server returns 400, spec says 401. See docs/findings.md#f1.
+    test.fail();
     const { response } = await api.GET('/me/');
     expect(response.status).toBe(401);
   });

@@ -32,10 +32,25 @@ test.describe('A-3 appointment lifecycle', () => {
     expect(confirmed.data?.status).toBe('confirmed');
   });
 
-  test('A-3 an invalid transition is rejected @critical', async ({ stylistApi }) => {
-    // Completing an appointment that was never confirmed.
+  test('A-3 an invalid transition is rejected @critical', async ({
+    clientApi,
+    stylistApi,
+    serviceId,
+    slotStart,
+  }) => {
+    // Book a real appointment (status: requested)...
+    const created = await clientApi.POST('/appointments', {
+      body: {
+        username: env.stylist.username,
+        services: [{ id: serviceId }],
+        startTime: slotStart,
+      },
+    });
+    const id = created.data!.id;
+
+    // ...then attempt to complete it before it's confirmed — illegal transition.
     const { response } = await stylistApi.POST('/appointments/{id}/complete', {
-      params: { path: { id: '11111111-1111-1111-1111-111111111111' } },
+      params: { path: { id } },
     });
     expect([400, 409]).toContain(response.status);
   });
