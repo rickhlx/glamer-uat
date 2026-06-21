@@ -7,13 +7,15 @@ test.describe('X-3 client cancels booking', () => {
   test('X-3 cancellation propagates to the stylist @critical', async ({
     clientApi,
     stylistApi,
+    serviceId,
+    slotStart,
   }) => {
     // Client books then cancels (DELETE /appointments/{id} is the client cancel).
     const created = await clientApi.POST('/appointments', {
       body: {
         username: env.stylist.username,
-        services: [{ id: '00000000-0000-0000-0000-000000000000' }],
-        startTime: '2099-05-01T10:00:00Z',
+        services: [{ id: serviceId }],
+        startTime: slotStart,
       },
     });
     const id = created.data!.id;

@@ -20,11 +20,15 @@ test.describe('A-4 availability', () => {
   });
 
   // [CONFIRM] concurrency guarantee. Booking the same slot twice must not both succeed.
-  test('A-4 a slot cannot be booked twice @critical', async ({ clientApi }) => {
+  test('A-4 a slot cannot be booked twice @critical', async ({
+    clientApi,
+    serviceId,
+    slotStart,
+  }) => {
     const body = {
       username: env.stylist.username,
-      services: [{ id: '00000000-0000-0000-0000-000000000000' }],
-      startTime: '2099-01-01T11:00:00Z',
+      services: [{ id: serviceId }],
+      startTime: slotStart,
     };
     const [first, second] = await Promise.all([
       clientApi.POST('/appointments', { body }),

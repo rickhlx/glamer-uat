@@ -8,13 +8,15 @@ test.describe('A-3 appointment lifecycle', () => {
   test('A-3 book → stylist confirm moves an appointment to confirmed @critical', async ({
     clientApi,
     stylistApi,
+    serviceId,
+    slotStart,
   }) => {
-    // Client books.
+    // Client books a real service into a real available slot.
     const created = await clientApi.POST('/appointments', {
       body: {
         username: env.stylist.username,
-        services: [{ id: '00000000-0000-0000-0000-000000000000' }],
-        startTime: '2099-01-01T10:00:00Z',
+        services: [{ id: serviceId }],
+        startTime: slotStart,
       },
     });
     expect(created.response.status).toBe(201);
