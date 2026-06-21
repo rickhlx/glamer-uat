@@ -15,14 +15,9 @@ test.describe('X-4 availability sync', () => {
         monday: [{ start: '09:00', end: '17:00' }],
       },
     });
-    expect(updated.response.status).toBe(200);
-    expect(updated.data).toMatchSpec({
-      path: '/me/stylist/availability',
-      method: 'put',
-      status: 200,
-    });
+    expect(updated.response.status).toBe(204); // 204 No Content per spec
 
-    // Public availability reflects the stylist's hours and is well-formed.
+    // Public availability reflects the stylist's hours, is well-formed, and conforms.
     const { data, response } = await api.GET('/stylists/{username}/availability', {
       params: {
         path: { username: env.stylist.username },
@@ -30,6 +25,11 @@ test.describe('X-4 availability sync', () => {
       },
     });
     expect(response.status).toBe(200);
+    expect(data).toMatchSpec({
+      path: '/stylists/{username}/availability',
+      method: 'get',
+      status: 200,
+    });
     expect(Array.isArray(data?.availability)).toBe(true);
   });
 });
