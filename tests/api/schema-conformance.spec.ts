@@ -7,7 +7,7 @@ test.describe('A-5 schema conformance', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
   test('A-5 stylist search conforms to spec @critical', async ({ api }) => {
-    // Known-failing: response violates the spec's oneOf. See docs/findings.md#f2.
+    // Known-failing: response violates the spec's oneOf. See docs/findings.md#f2 (glamer-backend#365).
     test.fail();
     const { data, response } = await api.GET('/stylists');
     expect(response.status).toBe(200);

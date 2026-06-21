@@ -1,14 +1,17 @@
 # Glamer UAT — Findings
 
-Backend/contract issues surfaced by UAT, ready to file with the **glamer-backend**
-team. Tests for these are marked known-failing (`test.fail`) and linked back here, so
-they don't block the gate as noise but flip to a real failure the moment they're fixed.
+Backend/contract issues surfaced by UAT, filed with the **glamer-backend** team
+(issues #364–369). Tests for these are marked known-failing (`test.fail`) and linked
+here, so they don't block the gate as noise but flip to a real failure the moment
+they're fixed.
 
 Severities follow [principles.md](./principles.md).
 
 ---
 
 ## F1 — Auth failures return `400` instead of `401`
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/364
 
 - **Severity:** P3 (minor) — affects the error contract of every cookie-authed endpoint.
 - **Endpoints:** all `cookieAuth` endpoints (observed on `HEAD /session`, `GET /me/`).
@@ -27,6 +30,8 @@ Severities follow [principles.md](./principles.md).
 
 ## F2 — `GET /stylists` response doesn't conform to its OpenAPI schema
 
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/365
+
 - **Severity:** P2 (major) — contract conformance gap on a core discovery endpoint.
 - **Endpoint:** `GET /stylists` (200).
 - **Spec says:** response `data[]` items validate against the declared schema (`oneOf`).
@@ -41,6 +46,8 @@ Severities follow [principles.md](./principles.md).
 ---
 
 ## F4 — Stylist-only endpoints return `500` for non-stylists instead of `403`
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/366
 
 - **Severity:** P2 (major) — authorization rejection surfaced as a server error.
 - **Endpoints:** `/me/stylist/*` (observed on `GET /me/stylist/profile`).
@@ -58,6 +65,8 @@ Severities follow [principles.md](./principles.md).
 
 ## F5 — `POST /appointments` returns `500` for missing/invalid location
 
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/367
+
 - **Severity:** P3 (minor) — validation surfaced as a server error.
 - **Endpoint:** `POST /appointments`.
 - **Actual:** with `locationType`/`locationId` omitted →
@@ -72,6 +81,8 @@ Severities follow [principles.md](./principles.md).
 
 ## F6 — `POST /me/register` returns `500` on duplicate, not `409`
 
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/368
+
 - **Severity:** P3 (minor).
 - **Endpoint:** `POST /me/register`.
 - **Actual:** re-registering an existing email →
@@ -81,6 +92,8 @@ Severities follow [principles.md](./principles.md).
 ---
 
 ## F7 — Booking `500`s when the client has no client profile (blocker)
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/369
 
 - **Severity:** P1 for UAT (blocks all booking journeys) — likely P2 product bug.
 - **Endpoint:** `POST /appointments`.
