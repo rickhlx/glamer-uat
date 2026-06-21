@@ -40,6 +40,22 @@ Severities follow [principles.md](./principles.md).
 
 ---
 
+## F4 — Stylist-only endpoints return `500` for non-stylists instead of `403`
+
+- **Severity:** P2 (major) — authorization rejection surfaced as a server error.
+- **Endpoints:** `/me/stylist/*` (observed on `GET /me/stylist/profile`).
+- **Spec says:** stylist-only endpoints should reject a non-stylist with `401`/`403`.
+- **Actual:** `500`:
+  ```json
+  { "type": "server_error", "title": "Internal Server Error", "detail": "user is not a stylist" }
+  ```
+  The backend *knows* the caller isn't a stylist (correct `detail`) but returns it as a
+  `500` rather than a `403 Forbidden`.
+- **Repro:** authenticate as a client, call `GET /me/stylist/profile`.
+- **Test:** `tests/api/authorization.spec.ts` (A-2), `test.fail` → F4.
+
+---
+
 ## F3 — (resolved as test-data) Client account had a stylist profile
 
 - Not a backend bug: the UAT "client" account (`ricardo_client`) was mistakenly set up

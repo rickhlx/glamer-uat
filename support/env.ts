@@ -37,7 +37,17 @@ export const env = {
     email: required('TEST_STYLIST_EMAIL'),
     password: required('TEST_STYLIST_PASSWORD'),
     // Public stylist routes are keyed by username (e.g. /stylists/{username}).
-    username: optional('TEST_STYLIST_USERNAME'),
+    // Lazy getter: only booking/availability journeys need it, so smoke/auth can
+    // run without it — but those that do need it fail loudly instead of 404ing.
+    get username(): string {
+      const u = process.env.TEST_STYLIST_USERNAME;
+      if (!u) {
+        throw new Error(
+          'TEST_STYLIST_USERNAME is required for booking/availability journeys (e.g. ricardo_stylist).',
+        );
+      }
+      return u;
+    },
   },
   seed: {
     url: optional('SEED_URL'),

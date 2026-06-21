@@ -13,7 +13,9 @@ export const personas = {
   stylist: {
     name: 'José Núñez',
     email: env.stylist.email,
-    username: env.stylist.username,
+    get username(): string {
+      return env.stylist.username;
+    },
   },
 } as const;
 

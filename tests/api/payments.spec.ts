@@ -1,16 +1,31 @@
 import { test, expect, env } from '../../support/fixtures.js';
 
 // A-6 — Payments. The real model uses an explicit mark-paid action (paymentStatus
-// transitions unpaid → captured). [CONFIRM] full charge/refund flow & cart checkout.
+// transitions toward captured). Self-contained: book → confirm → mark-paid.
+// [CONFIRM] full charge/refund flow & cart checkout.
 test.describe('A-6 payments', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
   test('A-6 marking an appointment paid updates payment status @critical', async ({
+    clientApi,
     stylistApi,
+    serviceId,
+    slotStart,
   }) => {
-    // Assumes a confirmed, unpaid appointment from seed data.
+    // Book and confirm a real appointment first.
+    const created = await clientApi.POST('/appointments', {
+      body: {
+        username: env.stylist.username,
+        services: [{ id: serviceId }],
+        startTime: slotStart,
+      },
+    });
+    const id = created.data!.id;
+    await stylistApi.POST('/appointments/{id}/confirm', { params: { path: { id } } });
+
+    // Stylist marks it paid.
     const { data, response } = await stylistApi.POST('/appointments/{id}/mark-paid', {
-      params: { path: { id: '22222222-2222-2222-2222-222222222222' } },
+      params: { path: { id } },
     });
     expect(response.status).toBe(200);
     expect(data).toMatchSpec({
