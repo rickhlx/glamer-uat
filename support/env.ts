@@ -22,6 +22,13 @@ function optional(name: string, fallback = ''): string {
 export const env = {
   apiBaseUrl: required('API_BASE_URL'),
   webBaseUrl: required('WEB_BASE_URL'),
+
+  /**
+   * Glamer auth is Firebase-based: sign in to Firebase with email/password to
+   * get an ID token, exchange it at POST /session for a `glamer-session` cookie.
+   * FIREBASE_API_KEY is the Firebase Web API key for the UAT project.
+   */
+  firebaseApiKey: optional('FIREBASE_API_KEY'),
   client: {
     email: required('TEST_CLIENT_EMAIL'),
     password: required('TEST_CLIENT_PASSWORD'),
@@ -29,20 +36,19 @@ export const env = {
   stylist: {
     email: required('TEST_STYLIST_EMAIL'),
     password: required('TEST_STYLIST_PASSWORD'),
+    // Public stylist routes are keyed by username (e.g. /stylists/{username}).
+    username: optional('TEST_STYLIST_USERNAME'),
   },
   seed: {
     url: optional('SEED_URL'),
     token: optional('SEED_TOKEN'),
   },
-  payments: {
-    declineCard: optional('TEST_CARD_DECLINE'),
-  },
   isCI: !!process.env.CI,
   /**
    * True while still pointed at the placeholder *.example domains from
    * .env.example. Journey tests skip themselves in this state so the scaffold
-   * is green before real UAT URLs + spec land. Flips off automatically once
-   * real hostnames are configured.
+   * is green before real UAT URLs land. Flips off automatically once real
+   * hostnames are configured.
    */
   get isPlaceholder(): boolean {
     return required('API_BASE_URL').endsWith('.example');

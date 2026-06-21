@@ -1,16 +1,19 @@
+import { env } from '../support/env.js';
+
 /**
  * Realistic test personas (principle 10: test like real usage). Includes names
  * with apostrophes / non-ASCII so flows that mishandle real input fail loudly.
+ * Stylist username comes from env since public routes are keyed by it.
  */
 export const personas = {
   client: {
     name: "Siobhán O'Brien",
-    email: 'uat.client@glamer.example',
+    email: env.client.email,
   },
   stylist: {
     name: 'José Núñez',
-    email: 'uat.stylist@glamer.example',
-    service: { name: 'Cut & Colour', priceCents: 8500, durationMinutes: 90 },
+    email: env.stylist.email,
+    username: env.stylist.username,
   },
 } as const;
 

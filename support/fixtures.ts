@@ -2,21 +2,19 @@ import { test as base, expect } from '@playwright/test';
 import './schema.js'; // registers the toMatchSpec matcher
 import { env } from './env.js';
 import { makeApiClient, type GlamerClient } from './api-client.js';
-import { loginAsClient, loginAsStylist, type Session } from './auth.js';
+import { clientApi as makeClientApi, stylistApi as makeStylistApi } from './auth.js';
 
 /**
  * Shared fixtures. Tests own their data and lean on these for setup
  * (principle 6). Add per-test teardown here as flows that create entities
- * (bookings, etc.) are implemented.
+ * (appointments, etc.) are implemented.
  */
 interface GlamerFixtures {
-  /** Anonymous typed API client. */
+  /** Anonymous typed API client (public endpoints). */
   api: GlamerClient;
-  /** Authenticated session for the test client (web/booking flows). */
-  clientSession: Session;
-  /** Authenticated session for the test stylist (drives the iOS side of cross-surface flows via API). */
-  stylistSession: Session;
-  /** Typed API client authenticated as the stylist. */
+  /** Typed API client authenticated as the test client (booking flows). */
+  clientApi: GlamerClient;
+  /** Typed API client authenticated as the test stylist (drives the iOS side of cross-surface flows via API). */
   stylistApi: GlamerClient;
 }
 
@@ -24,14 +22,11 @@ export const test = base.extend<GlamerFixtures>({
   api: async ({}, use) => {
     await use(makeApiClient());
   },
-  clientSession: async ({}, use) => {
-    await use(await loginAsClient());
+  clientApi: async ({}, use) => {
+    await use(await makeClientApi());
   },
-  stylistSession: async ({}, use) => {
-    await use(await loginAsStylist());
-  },
-  stylistApi: async ({ stylistSession }, use) => {
-    await use(makeApiClient(stylistSession.token));
+  stylistApi: async ({}, use) => {
+    await use(await makeStylistApi());
   },
 });
 

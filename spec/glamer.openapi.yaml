@@ -1,312 +1,5440 @@
 openapi: 3.0.3
 info:
-  title: Glamer API
-  version: 0.1.0-placeholder
-  description: >
-    PLACEHOLDER spec for the Glamer p2p stylist booking platform. Replace with the
-    real OpenAPI document. Shapes here are plausible defaults so the UAT scaffold
-    (type generation + response validation) works end to end before the real spec lands.
-servers:
-  - url: https://api.uat.glamer.example
-    description: UAT
-tags:
-  - name: auth
-  - name: stylists
-  - name: availability
-  - name: bookings
-  - name: payments
-
+  version: '1.0'
+  title: Glamer Backend API
+  description: API for managing users and stylists in the Glamer application.
 paths:
-  /auth/login:
+  /session:
+    head:
+      summary: Check session status
+      description: Validates the session cookie.
+      security:
+        - cookieAuth: []
+      responses:
+        '204':
+          description: Session is valid.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
-      tags: [auth]
-      operationId: login
-      summary: Authenticate a client or stylist
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/LoginRequest' }
+      summary: Generate session cookie
+      description: Creates a session cookie for the client browser using a Firebase ID token.
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          description: Authenticated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AuthToken' }
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /me:
-    get:
-      tags: [auth]
-      operationId: getMe
-      summary: Current authenticated principal
-      security: [{ bearerAuth: [] }]
-      responses:
-        '200':
-          description: The current user
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '401':
-          description: Unauthenticated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /stylists:
-    get:
-      tags: [stylists]
-      operationId: listStylists
-      summary: Browse stylists
-      parameters:
-        - name: q
-          in: query
-          schema: { type: string }
-      responses:
-        '200':
-          description: A list of stylists
+        '201':
+          description: Session cookie created successfully.
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/Stylist' }
-
-  /stylists/{stylistId}:
-    get:
-      tags: [stylists]
-      operationId: getStylist
-      summary: View a stylist profile
-      parameters:
-        - { name: stylistId, in: path, required: true, schema: { type: string } }
-      responses:
-        '200':
-          description: Stylist profile
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Bad request.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Stylist' }
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /stylists/{stylistId}/availability:
-    get:
-      tags: [availability]
-      operationId: getAvailability
-      summary: Available slots for a stylist
-      parameters:
-        - { name: stylistId, in: path, required: true, schema: { type: string } }
-        - { name: from, in: query, schema: { type: string, format: date } }
-        - { name: to, in: query, schema: { type: string, format: date } }
-      responses:
-        '200':
-          description: Available slots
+          description: User not found.
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/Slot' }
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Remove session cookie
+      description: Removes the session cookie from the client browser.
+      responses:
+        '204':
+          description: Session cookie removed successfully.
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/:
     put:
-      tags: [availability]
-      operationId: setAvailability
-      summary: Stylist sets their availability
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - { name: stylistId, in: path, required: true, schema: { type: string } }
+      summary: Update user profile
+      description: Updates the user's profile information such as name and bio.
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: array
-              items: { $ref: '#/components/schemas/Slot' }
+              required: null
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '204':
+          description: Profile updated successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get user profile
+      description: Retrieves the user's profile information such as name and bio.
+      security:
+        - cookieAuth: []
       responses:
         '200':
-          description: Updated availability
+          description: User profile retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      description: Delete user account
+      summary: Delete user account
+      security:
+        - cookieAuth: []
+      responses:
+        '204':
+          description: User account deleted successfully.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/register:
+    post:
+      tags:
+        - self
+      summary: Register a new user
+      description: Registers a new user with the provided ID token and user details.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/settings/notifications:
+    put:
+      summary: Update notification/email preferences
+      description: Updates the user's notification and email preferences.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserNotificationPreferencesRequest'
+      responses:
+        '204':
+          description: Preferences updated successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get notification/email preferences
+      description: Retrieves the user's notification and email preferences.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Preferences retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserNotificationPreferencesResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/settings/phone-number:
+    get:
+      summary: Get user's phone number
+      description: Retrieves the phone number associated with the authenticated user's account. Each user can have only one phone number for SMS messaging.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Phone number retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumberResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No phone number configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Set or update phone number
+      description: Sets or updates the user's phone number for SMS messaging. Only one phone number is allowed per user. The phone number must be verified via SMS before it can be used.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberCreateRequest'
+      responses:
+        '201':
+          description: Phone number created successfully. A verification OTP has been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumberResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update phone number
+      description: Updates the user's phone number. A new verification OTP will be sent to the new number.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberCreateRequest'
+      responses:
+        '200':
+          description: Phone number updated successfully. A verification OTP has been sent to the new number.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneNumberResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete phone number
+      description: Removes the phone number from the user's account. SMS messaging will no longer be available.
+      security:
+        - cookieAuth: []
+      responses:
+        '204':
+          description: Phone number deleted successfully.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/settings/timezone:
+    patch:
+      summary: Update user's timezone
+      description: Updates the timezone preference for the authenticated user. The timezone must be a valid IANA timezone identifier.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTimezoneRequest'
+      responses:
+        '204':
+          description: Timezone updated successfully.
+        '400':
+          description: Bad request (invalid timezone identifier).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/notifications:
+    get:
+      description: Get notifications
+      summary: Get notifications for the current user
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - read
+              - unread
+          description: Filter notifications by status.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination.
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: Number of notifications per page.
+      responses:
+        '200':
+          description: Notifications retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/notifications/{id}/read:
+    put:
+      summary: Mark notification as read
+      description: Marks a specific notification as read.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the notification to mark as read.
+      responses:
+        '204':
+          description: Notification marked as read successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notification not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/appointments:
+    get:
+      summary: Get my appointments
+      description: Retrieves appointments for the authenticated user (client). Returns appointments where the user is the client.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter appointments starting from this date (inclusive). Format YYYY-MM-DD.
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter appointments ending on or before this date (inclusive). Format YYYY-MM-DD.
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - requested
+                - confirmed
+                - completed
+                - completed_auto
+                - canceled_by_client
+                - canceled_by_stylist
+                - expired
+                - no_show_client
+                - no_show_stylist
+          description: Filter by appointment status.
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum:
+              - start_time
+              - end_time
+            default: start_time
+          description: Field to sort the results by.
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: Sort order (ascending or descending).
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination.
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page.
+      responses:
+        '200':
+          description: Appointments retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppointmentResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/devices:
+    post:
+      summary: Register a device token
+      description: Registers or updates an FCM device token for the authenticated user to receive push notifications.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTokenRequest'
+      responses:
+        '204':
+          description: Device token registered successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/devices/{token}:
+    delete:
+      summary: Unregister a device token
+      description: Removes a specific FCM device token (e.g. on logout).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The FCM token to remove.
+      responses:
+        '204':
+          description: Device token removed successfully.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/reviews:
+    get:
+      summary: Get user's own reviews
+      description: Retrieves reviews written by the authenticated user (only for clients).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - newest
+              - oldest
+              - highest
+              - lowest
+            default: newest
+          description: Sort order for reviews
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+          description: Number of reviews to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of reviews to skip for pagination
+      responses:
+        '200':
+          description: User's reviews retrieved successfully
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Slot' }
-        '403':
-          description: Forbidden (not the owning stylist)
+                items:
+                  $ref: '#/components/schemas/ReviewResponse'
+        '401':
+          description: Unauthorized.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /bookings:
-    post:
-      tags: [bookings]
-      operationId: createBooking
-      summary: Client requests a booking
-      security: [{ bearerAuth: [] }]
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/profile:
+    put:
+      summary: Update stylist profile
+      description: Updates the stylist's profile information such as headline and bio.
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateBookingRequest' }
+            schema:
+              $ref: '#/components/schemas/StylistProfileRequest'
+      responses:
+        '204':
+          description: Profile updated successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get stylist profile
+      description: Retrieves the stylist's profile information such as headline and bio.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Stylist profile retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylistProfileResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/complete:
+    post:
+      summary: Complete stylist onboarding
+      description: Validates that all onboarding requirements are met (profile basics, stylist type, a non-empty availability schedule, and at least one service), then persists onboardingCompleted=true and activates the stylist for bookings. Returns 400 if any requirement is unmet.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Onboarding completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Onboarding completed successfully
+                required:
+                  - success
+                  - message
+        '400':
+          description: Onboarding requirements not met
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/services:
+    post:
+      summary: Add a service
+      description: Adds a new service for the stylist.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceRequest'
       responses:
         '201':
-          description: Booking requested
+          description: Service added successfully.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Booking' }
-        '402':
-          description: Payment failed
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+        '400':
+          description: Bad request.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '409':
-          description: Slot no longer available
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /bookings/{bookingId}:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
-      tags: [bookings]
-      operationId: getBooking
-      summary: Get a booking
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - { name: bookingId, in: path, required: true, schema: { type: string } }
+      summary: Get services
+      description: Retrieves the stylist's services.
+      security:
+        - cookieAuth: []
       responses:
         '200':
-          description: The booking
+          description: Services retrieved successfully.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Booking' }
-        '403':
-          description: Forbidden (not a participant)
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceResponse'
+        '401':
+          description: Unauthorized.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /bookings/{bookingId}/transition:
-    post:
-      tags: [bookings]
-      operationId: transitionBooking
-      summary: Move a booking through its lifecycle (accept/decline/cancel/complete)
-      security: [{ bearerAuth: [] }]
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/services/{id}:
+    delete:
+      summary: Remove a service
+      description: Removes a service by its ID.
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: bookingId, in: path, required: true, schema: { type: string } }
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the service to remove.
+      responses:
+        '204':
+          description: Service removed successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a service
+      description: Updates the details of an existing service.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the service to update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TransitionRequest' }
+            schema:
+              $ref: '#/components/schemas/ServiceRequest'
       responses:
         '200':
-          description: Booking after transition
+          description: Service updated successfully.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Booking' }
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/availability:
+    put:
+      summary: Configure availability calendar
+      description: Configures the stylist's availability calendar.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeeklyAvailability'
+      responses:
+        '204':
+          description: Availability configured successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get availability calendar
+      description: Retrieves the stylist's availability calendar.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Availability calendar retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyAvailability'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/time-off:
+    post:
+      summary: Add or update time-off
+      description: Adds or updates a time-off entry for the stylist.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeOffEntryRequest'
+      responses:
+        '201':
+          description: Time-off added or updated successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get time-off entries
+      description: Retrieves the stylist's time-off entries.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Time-off entries retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeOffEntryResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/time-off/{id}:
+    delete:
+      summary: Remove time-off
+      description: Removes a time-off entry by its ID.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the time-off entry to remove.
+      responses:
+        '204':
+          description: Time-off removed successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/schedule-overrides:
+    get:
+      summary: Get schedule overrides
+      description: Retrieves the stylist's schedule overrides (special dates that override weekly availability).
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Schedule overrides retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleOverride'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Add a schedule override
+      description: Adds a new schedule override for a specific date.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleOverrideRequest'
+      responses:
+        '201':
+          description: Schedule override added successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleOverride'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/schedule-overrides/{date}:
+    get:
+      summary: Get a schedule override
+      description: Retrieves a schedule override for a specific date.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+          description: The date of the schedule override (YYYY-MM-DD format).
+      responses:
+        '200':
+          description: Schedule override retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleOverride'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Schedule override not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a schedule override
+      description: Updates the schedule override for a specific date.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+          description: The date of the schedule override (YYYY-MM-DD format).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleOverrideUpdateRequest'
+      responses:
+        '200':
+          description: Schedule override updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleOverride'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Schedule override not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Remove a schedule override
+      description: Removes a schedule override for a specific date.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+          description: The date of the schedule override to remove (YYYY-MM-DD format).
+      responses:
+        '204':
+          description: Schedule override removed successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Schedule override not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/locations:
+    get:
+      summary: Get work locations
+      description: Retrieves the stylist's work locations.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Work locations retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StylistWorkLocationResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - self
+      summary: Add a work location
+      description: Adds a new work location for the stylist.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylistWorkLocationRequest'
+      responses:
+        '201':
+          description: Work location added successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylistWorkLocationResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/locations/{id}:
+    delete:
+      summary: Remove a work location
+      description: Removes a work location by its ID.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the work location to remove.
+      responses:
+        '204':
+          description: Work location removed successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Work location not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/portfolio:
+    get:
+      summary: Get my portfolio photos
+      description: Retrieve authenticated stylist's own portfolio photos
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Portfolio photos retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortfolioPhotoResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Register a new portfolio photo
+      description: Register an uploaded photo with metadata
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioPhotoCreateRequest'
+      responses:
+        '201':
+          description: Photo registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioPhotoResponse'
+        '400':
+          description: Bad request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden
+          description: Forbidden (photo limit reached)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/portfolio/{id}:
+    put:
+      summary: Update portfolio photo
+      description: Update photo description, service tag, or display position
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Photo ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioPhotoUpdateRequest'
+      responses:
+        '200':
+          description: Photo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioPhotoResponse'
+        '400':
+          description: Bad request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete portfolio photo
+      description: Permanently delete a portfolio photo
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Photo ID
+      responses:
+        '204':
+          description: Photo deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/portfolio/reorder:
+    put:
+      summary: Reorder portfolio photos
+      description: Batch update display positions for multiple photos
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioReorderRequest'
+      responses:
+        '204':
+          description: Photos reordered successfully
+        '400':
+          description: Bad request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (not owner of one or more photos)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/appointments:
+    get:
+      summary: Get stylist appointments
+      description: Retrieves appointments for the authenticated stylist. Returns appointments where the user is the stylist.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter appointments starting from this date (inclusive). Format YYYY-MM-DD.
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter appointments ending on or before this date (inclusive). Format YYYY-MM-DD.
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - requested
+                - confirmed
+                - completed
+                - completed_auto
+                - canceled_by_client
+                - canceled_by_stylist
+                - expired
+                - no_show_client
+                - no_show_stylist
+          description: Filter by appointment status.
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum:
+              - start_time
+              - end_time
+            default: start_time
+          description: Field to sort the results by.
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: Sort order (ascending or descending).
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination.
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page.
+      responses:
+        '200':
+          description: Appointments retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: User is not a stylist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists:
+    get:
+      summary: Search for stylists
+      description: Search for stylists based on filters such as type, specialties, and location.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by stylist type(s). Valid values are the slugs returned by GET /stylist-types.
+        - name: services
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by specific service slugs for precise matching (e.g., "basic-mens-haircut", "balayage-ombre")
+        - name: specialties
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by stylist specialties (e.g., "bridal", "men's grooming", "curly hair")
+        - name: min_rating
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: 1
+            maximum: 5
+          description: Minimum average rating (0-5 stars)
+        - name: min_experience_years
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+          description: Minimum years of experience
+        - name: min_base_price
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: 0
+          description: Minimum base service price
+        - name: max_base_price
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: 0
+          description: Maximum base service price
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum:
+              - relevance
+              - rating
+              - price_low_to_high
+              - price_high_to_low
+              - experience
+              - review_count
+              - newest
+            default: relevance
+          description: Field to sort results by
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+          description: Sort order (ascending or descending)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of results per page
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Text search query for stylist names, descriptions, or services
+      responses:
+        '200':
+          description: List of stylists matching the search criteria.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/StylistSearchResponse'
+                        - $ref: '#/components/schemas/StylistAuthenticatedSearchResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists/check-username:
+    get:
+      summary: Check username availability
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^[a-zA-Z0-9_]{3,30}$
+          description: Username to check availability for
+      responses:
+        '200':
+          description: Username availability result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsernameAvailabilityCheckResponse'
+        '400':
+          description: Invalid username format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists/{username}:
+    get:
+      summary: Get stylist by username
+      description: Retrieve stylist details by username.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The username of the stylist.
+      security:
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          description: Stylist details.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StylistPublicResponse'
+                  - $ref: '#/components/schemas/StylistAuthenticatedResponse'
+        '404':
+          description: Stylist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists/{username}/like:
+    post:
+      summary: Like a stylist
+      description: Like a stylist by their username.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The username of the stylist.
+      responses:
+        '201':
+          description: Stylist liked successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Stylist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Unlike a stylist
+      description: Unlike a stylist by their username.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The username of the stylist.
+      responses:
+        '204':
+          description: Stylist unliked successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Stylist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists/{username}/availability:
+    get:
+      summary: Get stylist availability
+      description: Retrieve the availability of a stylist by their ID.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date for the availability range (YYYY-MM-DD).
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date for the availability range (YYYY-MM-DD).
+        - name: duration_minutes
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Desired appointment duration in minutes for generated availability slots.
+      responses:
+        '200':
+          description: Stylist availability retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '404':
+          description: Stylist not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylists/{username}/portfolio:
+    get:
+      summary: Get stylist portfolio photos
+      description: Retrieve all portfolio photos for a specific stylist, ordered by display position
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Stylist username
+      security:
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          description: Portfolio photos retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortfolioPhotoResponse'
+        '404':
+          description: Stylist not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Book an appointment
+      description: Books a new appointment with a stylist.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentRequest'
+      responses:
+        '201':
+          description: Appointment booked successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      security:
+        - cookieAuth: []
+      summary: Get appointments
+      description: Retrieves appointments filtered by query parameters. Stylists use username filter, clients use 'mine' filter.
+      parameters:
+        - name: username
+          in: query
+          schema:
+            type: string
+          description: Filter by stylist username. Only used by stylists themselves or clients looking for a specific stylist's appointments.
+        - name: mine
+          in: query
+          schema:
+            type: boolean
+          description: When set to true, returns only the client's own appointments. Only valid for clients.
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter appointments starting from this date (inclusive). Format YYYY-MM-DD.
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - requested
+                - confirmed
+                - completed
+                - completed_auto
+                - canceled_by_client
+                - canceled_by_stylist
+                - expired
+                - no_show_client
+                - no_show_stylist
+          description: Filter by appointment status.
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum:
+              - start_time
+              - end_time
+            default: start_time
+          description: Field to sort the results by.
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: Sort order (ascending or descending).
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination.
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page.
+      responses:
+        '200':
+          description: Appointments retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}:
+    get:
+      security:
+        - cookieAuth: []
+      summary: Get appointment details
+      description: Retrieves details of a specific appointment by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Appointment details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update an appointment
+      description: Updates the details of an existing appointment.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentRequest'
+      responses:
+        '200':
+          description: Appointment updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      security:
+        - cookieAuth: []
+      summary: Cancel an appointment (client)
+      description: Client cancels an existing appointment by ID. Only works for requested or confirmed statuses.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '204':
+          description: Appointment canceled successfully.
+        '400':
+          description: Bad request (invalid status for cancellation).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/confirm:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Confirm an appointment (stylist)
+      description: Stylist confirms a booking request. Transitions status from 'requested' to 'confirmed'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Appointment confirmed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid status or not a requested appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/decline:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Decline an appointment (stylist)
+      description: Stylist declines a booking request. Transitions status from 'requested' to 'canceled_by_stylist'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for declining the appointment.
+      responses:
+        '200':
+          description: Appointment declined successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid status or not a requested appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/complete:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Mark appointment as completed (stylist)
+      description: Stylist marks a confirmed appointment as completed. Transitions status from 'confirmed' to 'completed'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Appointment marked as completed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid status or not a confirmed appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/mark-paid:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Mark appointment as paid (stylist)
+      description: Stylist marks an appointment as paid. Updates payment_status from 'unpaid' or 'authorized' to 'captured'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Appointment marked as paid successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid payment status for update).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/no-show-client:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Report client no-show (stylist)
+      description: Stylist reports that the client did not arrive for a confirmed appointment. Transitions to 'no_show_client'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Client no-show recorded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid status or not a confirmed appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/no-show-stylist:
+    post:
+      security:
+        - cookieAuth: []
+      summary: Report stylist no-show (client)
+      description: Client reports that the stylist did not show up for a confirmed appointment. Transitions to 'no_show_stylist'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      responses:
+        '200':
+          description: Stylist no-show recorded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Bad request (invalid status or not a confirmed appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /appointments/{id}/cancel-stylist:
+    delete:
+      security:
+        - cookieAuth: []
+      summary: Cancel appointment (stylist)
+      description: Stylist cancels a confirmed appointment. Transitions status from 'confirmed' to 'canceled_by_stylist'.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the appointment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for canceling the appointment.
+      responses:
+        '204':
+          description: Appointment canceled by stylist successfully.
+        '400':
+          description: Bad request (invalid status or not a confirmed appointment).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Appointment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reviews:
+    get:
+      summary: List reviews
+      parameters:
+        - in: query
+          name: stylist_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: client_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: appointment_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: has_reply
+          schema:
+            type: boolean
+        - in: query
+          name: rating
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum:
+              - newest
+              - oldest
+              - highest
+            default: newest
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewResponse'
+    post:
+      summary: Create a new review
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reviews/token/{token}:
+    get:
+      summary: Get appointment details for review page
+      description: Retrieves appointment details using a review token. Used by the review page to display context before submitting a review. No authentication required.
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            minLength: 10
+            maxLength: 10
+          description: The 10-character alphanumeric review token received via email/SMS
+      responses:
+        '200':
+          description: Appointment details for the review page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAppointmentDetails'
+        '404':
+          description: Token not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a review using a token
+      description: Creates a new review using a time-limited token sent to the client after appointment completion. No authentication required.
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            minLength: 10
+            maxLength: 10
+          description: The 10-character alphanumeric review token received via email/SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateWithToken'
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request (invalid token format, missing fields, or token already used).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Token not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Token expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reviews/{id}:
+    get:
+      summary: Get a single review
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a review (client)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdate'
+      responses:
+        '200':
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a review (client)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Review deleted
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reviews/{id}/reply:
+    post:
+      summary: Add a reply (stylist)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyCreate'
+      responses:
+        '200':
+          description: Review with reply
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a reply (stylist)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyUpdate'
+      responses:
+        '200':
+          description: Review with updated reply
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a reply (stylist)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Reply deleted
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts:
+    post:
+      summary: Create a new cart
+      description: Creates a new shopping cart for authenticated users or guest sessions.
+      security:
+        - cookieAuth: []
+        - {}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartCreateRequest'
+      responses:
+        '201':
+          description: Cart created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get active cart
+      description: Retrieves the active cart for the current user or session.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest carts (when not authenticated).
+      responses:
+        '200':
+          description: Active cart retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '404':
+          description: No active cart found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/merge:
+    post:
+      summary: Merge guest cart with user account
+      description: Associates a guest cart with an authenticated user account.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartMergeRequest'
+      responses:
+        '200':
+          description: Cart merged successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Guest cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/{id}:
+    get:
+      summary: Get cart by ID
+      description: Retrieves a specific cart by its ID.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '200':
+          description: Cart retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update cart preferences
+      description: Updates cart-level preferences such as preferred start time.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartUpdateRequest'
+      responses:
+        '200':
+          description: Cart updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete cart
+      description: Deletes a cart and all its items.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '204':
+          description: Cart deleted successfully.
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/{id}/items:
+    post:
+      summary: Add item to cart
+      description: Adds a service item to the cart with optional time preferences.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemCreateRequest'
+      responses:
+        '201':
+          description: Item added to cart successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItemResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Invalid state transition
+          description: Item already exists in cart.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get cart items
+      description: Retrieves all items in a cart.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '200':
+          description: Cart items retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CartItemResponse'
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Clear cart
+      description: Removes all items from the cart.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '204':
+          description: Cart cleared successfully.
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/{id}/items/{itemId}:
+    get:
+      summary: Get cart item
+      description: Retrieves a specific item from the cart.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart item.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '200':
+          description: Cart item retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItemResponse'
+        '404':
+          description: Cart or item not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update cart item
+      description: Updates a cart item's details such as time preferences or notes.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart item.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemUpdateRequest'
+      responses:
+        '200':
+          description: Cart item updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItemResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cart or item not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Remove cart item
+      description: Removes a specific item from the cart.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart item.
+        - name: session_id
+          in: query
+          schema:
+            type: string
+          description: Session ID for guest cart access.
+      responses:
+        '204':
+          description: Cart item removed successfully.
+        '404':
+          description: Cart or item not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/{id}/checkout:
+    post:
+      summary: Checkout cart
+      description: Converts cart items to actual appointments and processes payment.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the cart.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartCheckoutRequest'
+      responses:
+        '200':
+          description: Cart checked out successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartCheckoutResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - guest carts cannot be checked out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cart cannot be checked out (empty, expired, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /services:
+    get:
+      summary: List services
+      description: Get all available services from the service catalog for the given stylist type.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Stylist type slug (e.g. barber, stylist, nail-technician). When authenticated as a stylist, defaults to that stylist's type.
+      responses:
+        '200':
+          description: Services retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CatalogServiceResponse'
+        '400':
+          description: Missing or invalid type parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /addons:
+    get:
+      summary: List addons
+      description: Returns available addon slugs for the given stylist type.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Stylist type slug (e.g. barber, stylist, nail-technician). When authenticated as a stylist, defaults to that stylist's type.
+      responses:
+        '200':
+          description: Addons retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AddonResponse'
+        '400':
+          description: Missing or invalid type parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /locations:
+    post:
+      summary: Create a new location
+      description: Creates a new business location.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationRequest'
+      responses:
+        '201':
+          description: Location created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stylist-types:
+    get:
+      summary: List stylist types
+      description: Returns all registered stylist profession types (e.g. barber, stylist, nail-technician).
+      responses:
+        '200':
+          description: Stylist types retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StylistTypeResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /invites/{code}:
+    get:
+      summary: Validate stylist invite code
+      description: Validates if a stylist invite code is valid and can be used.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The invite code to validate
+      responses:
+        '200':
+          description: Invite code validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the invite code is valid
+                  code:
+                    type: string
+                    description: The invite code
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: Unix timestamp when the invite expires
+                  message:
+                    type: string
+                    description: Additional message about the validation result
+                required:
+                  - valid
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Use stylist invite code
+      description: Uses a stylist invite code to convert the authenticated user to a stylist.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The invite code to use
+      responses:
+        '200':
+          description: Invite code used successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation was successful
+                  message:
+                    type: string
+                    description: Success message
+                required:
+                  - success
+                  - message
+        '400':
+          description: Bad request (invalid code, expired, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (user not authenticated)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invite code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: glamer-session
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    TimezoneHeader:
+      name: X-Timezone
+      in: header
+      required: false
+      description: |
+        IANA timezone identifier for response time formatting.
+        If not provided, falls back to the user's stored timezone preference,
+        or UTC if no preference is set.
+      schema:
+        type: string
+        example: America/New_York
   schemas:
-    Error:
+    SessionResponse:
       type: object
-      required: [code, message]
+      required:
+        - session
+        - expires
       properties:
-        code: { type: string }
-        message: { type: string }
-        details: { type: object, additionalProperties: true }
-    LoginRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email: { type: string, format: email }
-        password: { type: string }
-    AuthToken:
-      type: object
-      required: [token, user]
-      properties:
-        token: { type: string }
-        user: { $ref: '#/components/schemas/User' }
-    User:
-      type: object
-      required: [id, email, role]
-      properties:
-        id: { type: string }
-        email: { type: string, format: email }
-        role: { type: string, enum: [client, stylist] }
-        name: { type: string }
-    Stylist:
-      type: object
-      required: [id, name, services]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        bio: { type: string }
-        services:
-          type: array
-          items: { $ref: '#/components/schemas/Service' }
-    Service:
-      type: object
-      required: [id, name, priceCents, durationMinutes]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        priceCents: { type: integer }
-        durationMinutes: { type: integer }
-    Slot:
-      type: object
-      required: [start, end, available]
-      properties:
-        start: { type: string, format: date-time }
-        end: { type: string, format: date-time }
-        available: { type: boolean }
-    CreateBookingRequest:
-      type: object
-      required: [stylistId, serviceId, slotStart]
-      properties:
-        stylistId: { type: string }
-        serviceId: { type: string }
-        slotStart: { type: string, format: date-time }
-        paymentToken: { type: string }
-    Booking:
-      type: object
-      required: [id, status, stylistId, clientId, serviceId, slotStart, priceCents]
-      properties:
-        id: { type: string }
-        status:
+        session:
           type: string
-          enum: [requested, accepted, declined, cancelled, completed]
-        stylistId: { type: string }
-        clientId: { type: string }
-        serviceId: { type: string }
-        slotStart: { type: string, format: date-time }
-        priceCents: { type: integer }
-    TransitionRequest:
+          description: The generated session cookie.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        expires:
+          type: number
+          format: double
+          description: Expiration time of the session cookie in seconds.
+          example: 432000
+    ErrorResponse:
       type: object
-      required: [action]
       properties:
+        message:
+          type: string
+          description: Error message.
+          example: bad request
+    UserResponse:
+      type: object
+      required:
+        - displayName
+        - email
+        - role
+        - timezone
+      properties:
+        displayName:
+          type: string
+          description: User's display name.
+        email:
+          type: string
+          description: User's email address.
+          format: email
+        avatarUrl:
+          type: string
+          description: URL of the user's avatar image.
+          format: uri
+        role:
+          type: string
+          description: User's role (e.g., stylist, client).
+          enum:
+            - client
+            - stylist
+            - admin
+        timezone:
+          type: string
+          description: IANA timezone identifier (e.g., "America/New_York", "UTC").
+          example: America/New_York
+    UserRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: User's display name.
+        email:
+          type: string
+          description: User's email address.
+          format: email
+        avatarUrl:
+          type: string
+          description: URL of the user's avatar image.
+          format: uri
+        role:
+          type: string
+          description: User's type (e.g., stylist, client).
+          enum:
+            - client
+            - stylist
+            - admin
+    UserNotificationPreferencesResponse:
+      type: object
+      required:
+        - activity
+        - marketing
+      properties:
+        activity:
+          type: boolean
+          description: Whether to receive activity notifications.
+        marketing:
+          type: boolean
+          description: Whether to receive marketing notifications.
+        push:
+          type: boolean
+          description: Whether to receive iOS push notifications.
+    UserNotificationPreferencesRequest:
+      type: object
+      required:
+        - activity
+        - marketing
+      properties:
+        activity:
+          type: boolean
+          description: Whether to receive activity notifications.
+        marketing:
+          type: boolean
+          description: Whether to receive marketing notifications.
+        push:
+          type: boolean
+          description: Whether to receive iOS push notifications.
+    PhoneNumberResponse:
+      type: object
+      required:
+        - phoneNumber
+        - verified
+      properties:
+        phoneNumber:
+          type: string
+          description: Phone number in E.164 format.
+          example: '+14155552671'
+        verified:
+          type: boolean
+          description: Whether the phone number has been verified via SMS OTP.
+    PhoneNumberCreateRequest:
+      type: object
+      required:
+        - phoneNumber
+      properties:
+        phoneNumber:
+          type: string
+          description: Phone number in E.164 format (e.g., +14155552671).
+          pattern: ^\+[1-9]\d{1,14}$
+          example: '+14155552671'
+        verified:
+          type: boolean
+          description: Phone number validation status
+    UpdateTimezoneRequest:
+      type: object
+      required:
+        - timezone
+      properties:
+        timezone:
+          type: string
+          description: IANA timezone identifier (e.g., "America/New_York", "Europe/London", "UTC").
+          example: America/New_York
+    MetaResponse:
+      properties:
+        page:
+          type: integer
+          description: Current page number.
+          example: 1
+        pageSize:
+          type: integer
+          description: Number of items per page.
+          example: 10
+        totalPages:
+          type: integer
+          description: Total number of pages.
+          example: 10
+        totalItems:
+          type: integer
+          description: Total number of items.
+          example: 100
+    LinksResponse:
+      type: object
+      properties:
+        self:
+          type: string
+          description: URL of the current page.
+        next:
+          type: string
+          description: URL of the next page.
+        prev:
+          type: string
+          description: URL of the previous page.
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the notification.
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the notification was created.
+        type:
+          type: string
+          description: Type of the notification.
         action:
           type: string
-          enum: [accept, decline, cancel, complete]
-        reason: { type: string }
+          description: Action associated with the notification.
+        target:
+          type: string
+          description: Target of the notification.
+        isRead:
+          type: boolean
+          description: Whether the notification has been read.
+    ServiceLocationType:
+      type: string
+      enum:
+        - at_stylist
+        - at_client
+      description: Whether a service takes place at the stylist's business location (at_stylist) or at the client's location (at_client, travel booking).
+    ClientResponse:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: User displayname
+    AppointmentResponse:
+      type: object
+      required:
+        - id
+        - username
+        - services
+        - startTime
+        - endTime
+        - status
+        - stylistDisplayName
+        - totalPriceCents
+        - totalDurationMinutes
+        - paymentStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the appointment.
+        username:
+          type: string
+          description: Username of the stylist.
+        services:
+          type: array
+          description: List of services booked for this appointment.
+          items:
+            type: object
+            required:
+              - id
+              - slug
+              - name
+              - priceCents
+              - durationMinutes
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Unique identifier for the service.
+              slug:
+                type: string
+                description: Unique slug identifier for the service.
+                example: basic-mens-haircut
+              name:
+                type: string
+                description: Display name of the service.
+              priceCents:
+                type: integer
+                description: Price of the service in cents at booking time.
+              durationMinutes:
+                type: integer
+                description: Duration of the service in minutes at booking time.
+              category:
+                type: string
+                description: Category of the service.
+              includedAddons:
+                type: array
+                items:
+                  type: string
+                description: Addon slugs included with service at booking time
+                example:
+                  - wash
+                  - blow-dry
+        totalPriceCents:
+          type: integer
+          description: Total price of all services in cents.
+        totalDurationMinutes:
+          type: integer
+          description: Total duration of all services in minutes.
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the appointment.
+          example: '2023-10-01T10:00:00Z'
+        endTime:
+          type: string
+          format: date-time
+          description: End time of the appointment.
+          example: '2023-10-01T11:00:00Z'
+        status:
+          type: string
+          description: Status of the appointment in the booking lifecycle.
+          enum:
+            - requested
+            - confirmed
+            - completed
+            - completed_auto
+            - canceled_by_client
+            - canceled_by_stylist
+            - expired
+            - no_show_client
+            - no_show_stylist
+        stylistAvatar:
+          type: string
+          description: URL of the stylist's avatar image.
+          format: uri
+        stylistDisplayName:
+          type: string
+          description: Display name of the stylist.
+        clientDisplayName:
+          type: string
+          description: Display name of the client.
+        locationType:
+          $ref: '#/components/schemas/ServiceLocationType'
+        locationName:
+          type: string
+          description: Name of the location where the service is provided.
+        locationAddress:
+          type: string
+          description: Address of the location where the service is provided (or client-supplied address for at_client).
+        cartId:
+          type: string
+          format: uuid
+          description: ID of the cart that was used to create this appointment (if any).
+        paymentStatus:
+          type: string
+          enum:
+            - unpaid
+            - authorized
+            - captured
+            - refunded
+            - partial_refund
+          description: Payment status of the appointment.
+          example: unpaid
+        capturedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the appointment snapshot was captured.
+        cancellationReason:
+          type: string
+          nullable: true
+          description: Reason for cancellation (for canceled_by_stylist, canceled_by_client, or expired statuses).
+        client:
+          $ref: '#/components/schemas/ClientResponse'
+          description: Client information for the appointment.
+    DeviceTokenRequest:
+      type: object
+      required:
+        - token
+        - platform
+      properties:
+        token:
+          type: string
+          description: FCM registration token from the iOS app.
+        platform:
+          type: string
+          description: Device platform.
+          enum:
+            - ios
+          example: ios
+    ReviewResponse:
+      type: object
+      required:
+        - id
+        - createdAt
+        - bookingId
+        - rating
+        - comment
+        - author
+        - stylistUsername
+        - stylistDisplayName
+        - author
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the review.
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the review was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the review was last updated.
+        repliedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the stylist replied to the review.
+        bookingId:
+          type: string
+          format: uuid
+          description: ID of the appointment associated with the review.
+        stylistUsername:
+          type: string
+          description: Username of the stylist being reviewed.
+        stylistDisplayName:
+          type: string
+          description: Display name of the stylist being reviewed.
+        stylistAvatar:
+          type: string
+          description: URL of the stylist's avatar image.
+          format: uri
+        replyComment:
+          type: string
+          description: Reply comment from the stylist (if any).
+          example: Thank you for your feedback!
+        rating:
+          type: integer
+          description: Rating for the stylist.
+          example: 5
+        comment:
+          type: string
+          description: Review comment.
+          example: Excellent service!
+        author:
+          type: string
+          description: Author of the review.
+          example: John Doe
+        authorAvatarUrl:
+          type: string
+          description: URL of the author's avatar image.
+          format: uri
+    OnboardingSteps:
+      type: object
+      description: Derived per-step readiness of the stylist's onboarding. Each flag is recomputed from current profile state on every request; clients can use it to resume a half-finished onboarding flow at the right step. Distinct from onboardingCompleted, which is the persisted completion flag.
+      required:
+        - profileBasics
+        - type
+        - availability
+        - firstService
+      properties:
+        profileBasics:
+          type: boolean
+          description: True when bio and years of experience are set.
+        type:
+          type: boolean
+          description: True when the stylist has chosen a profession type.
+        availability:
+          type: boolean
+          description: True when a non-empty weekly availability is configured.
+        firstService:
+          type: boolean
+          description: True when the stylist has at least one service.
+    StylistProfileResponse:
+      type: object
+      required:
+        - username
+        - yearsExperience
+        - type
+        - onboardingCompleted
+      properties:
+        username:
+          type: string
+          description: Stylist's username.
+        bio:
+          type: string
+          description: Stylist's bio.
+        type:
+          type: string
+          description: Stylist's profession type. Valid values are the slugs returned by GET /stylist-types.
+        yearsExperience:
+          type: integer
+          format: int16
+          example: 5
+          description: Years of experience working as a stylist.
+        phone:
+          type: string
+          description: Stylist's phone number.
+        email:
+          type: string
+          format: email
+          description: Stylist's email address.
+        website:
+          type: string
+          format: uri
+          description: Stylist's website URL.
+        instagram:
+          type: string
+          description: Stylist's Instagram handle.
+        tiktok:
+          type: string
+          description: Stylist's TikTok handle.
+        x:
+          type: string
+          description: Stylist's X (Twitter) handle.
+        facebook:
+          type: string
+          description: Stylist's Facebook handle.
+        youtube:
+          type: string
+          description: Stylist's YouTube channel or handle.
+        specialties:
+          type: array
+          items:
+            type: string
+          description: List of stylist specialties.
+        offersTravel:
+          type: boolean
+          description: When true, the stylist is willing to travel to the client's location.
+        onboardingCompleted:
+          type: boolean
+          description: Whether the stylist has completed onboarding. This is the persisted source of truth, set to true once POST /me/stylist/complete has succeeded. Used by the iOS client to gate the onboarding flow.
+        onboardingSteps:
+          $ref: '#/components/schemas/OnboardingSteps'
+    StylistProfileRequest:
+      type: object
+      required:
+        - username
+        - type
+        - yearsExperience
+      properties:
+        username:
+          type: string
+          description: Stylist's username.
+        bio:
+          type: string
+          description: Stylist's bio.
+        type:
+          type: string
+          description: Stylist's profession type. Valid values are the slugs returned by GET /stylist-types.
+        yearsExperience:
+          type: integer
+          format: int16
+          example: 5
+          description: Years of experience working as a stylist.
+        phone:
+          type: string
+          description: Stylist's phone number.
+        email:
+          type: string
+          format: email
+          description: Stylist's email address.
+        website:
+          type: string
+          format: uri
+          description: Stylist's website URL.
+        instagram:
+          type: string
+          description: Stylist's Instagram handle.
+        tiktok:
+          type: string
+          description: Stylist's TikTok handle.
+        x:
+          type: string
+          description: Stylist's X (Twitter) handle.
+        facebook:
+          type: string
+          description: Stylist's Facebook handle.
+        youtube:
+          type: string
+          description: Stylist's YouTube channel or handle.
+        specialties:
+          type: array
+          items:
+            type: string
+          description: List of stylist specialties.
+        offersTravel:
+          type: boolean
+          description: When true, the stylist is willing to travel to the client's location. Clients may book an at_client appointment and supply an ad-hoc address.
+    ServiceResponse:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - description
+        - duration
+        - price
+        - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the service
+        slug:
+          type: string
+          description: Slug for the service, used in URLs.
+        name:
+          type: string
+          description: Name of the service.
+        description:
+          type: string
+          description: Description of the service.
+        duration:
+          type: integer
+          format: int32
+          description: Duration of the service in minutes.
+        price:
+          type: integer
+          format: int32
+          description: Price of the service.
+        currency:
+          type: string
+          description: Currency of the service price.
+        includedAddons:
+          type: array
+          items:
+            type: string
+          description: Array of addon slugs included in this service (e.g., wash, blow-dry, style)
+          example:
+            - wash
+            - blow-dry
+        isStartingAt:
+          type: boolean
+          description: When true, the price is a starting/minimum price that may be adjusted.
+          default: false
+        category:
+          type: string
+          description: Grouping label for UI organization (e.g. "Manicure", "Pedicure", "Haircuts").
+    ServiceRequest:
+      type: object
+      required:
+        - slug
+        - duration
+        - price
+        - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the service.
+        slug:
+          type: string
+          description: Slug for the service, used in URLs.
+        name:
+          type: string
+          description: Name of the service.
+        description:
+          type: string
+          description: Description of the service.
+        duration:
+          type: integer
+          format: int32
+          description: Duration of the service in minutes.
+        price:
+          type: integer
+          format: int32
+          description: Price of the service.
+        currency:
+          type: string
+          description: Currency of the service price.
+        includedAddons:
+          type: array
+          items:
+            type: string
+          description: Array of addon slugs included in this service (e.g., wash, blow-dry, style)
+          example:
+            - wash
+            - blow-dry
+            - style
+        isStartingAt:
+          type: boolean
+          description: When true, the price is a starting/minimum price that may be adjusted.
+          default: false
+    TimeSlot:
+      type: object
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+          format: time
+          description: Local wall-clock start time (HH:MM) in the stylist's timezone. No UTC offset; interpreted in the stylist's business timezone.
+          example: '09:00'
+        end:
+          type: string
+          format: time
+          description: Local wall-clock end time (HH:MM) in the stylist's timezone. No UTC offset; interpreted in the stylist's business timezone.
+          example: '17:00'
+    WeeklyAvailability:
+      type: object
+      properties:
+        timezone:
+          type: string
+          description: Stylist's IANA business timezone anchoring these hours. Settable on PUT (optional -- omit to leave the stored value unchanged) and echoed on GET. Invalid identifiers are rejected with 400. TimeSlot start/end are local wall-clock times interpreted in this zone.
+          example: America/New_York
+        monday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        tuesday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        wednesday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        thursday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        friday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        saturday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+        sunday:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+      additionalProperties: false
+      example:
+        timezone: America/New_York
+        monday:
+          - start: '09:00'
+            end: '12:00'
+          - start: '13:00'
+            end: '17:00'
+        tuesday:
+          - start: '10:00'
+            end: '15:00'
+        wednesday: []
+        thursday:
+          - start: '09:00'
+            end: '12:00'
+        friday:
+          - start: '09:00'
+            end: '17:00'
+        saturday: []
+        sunday: []
+    TimeOffEntryResponse:
+      type: object
+      required:
+        - entryID
+        - startDate
+        - endDate
+      properties:
+        entryID:
+          type: string
+          format: uuid
+          description: Unique identifier for the time-off entry.
+        startDate:
+          type: string
+          format: date
+          description: Date of time-off.
+        endDate:
+          type: string
+          format: date
+          description: Date of time-off.
+        reason:
+          type: string
+          description: Reason for time-off.
+    TimeOffEntryRequest:
+      type: object
+      required:
+        - startDate
+        - endDate
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: Date of time-off.
+        endDate:
+          type: string
+          format: date
+          description: Date of time-off.
+        reason:
+          type: string
+          description: Reason for time-off.
+    ScheduleOverride:
+      type: object
+      required:
+        - date
+        - timeSlots
+      properties:
+        date:
+          type: string
+          format: date
+          description: The date of the schedule override (YYYY-MM-DD format).
+        timeSlots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+          description: Time slots for this date. Empty array means the stylist is unavailable on this date.
+        note:
+          type: string
+          description: Optional note about this schedule override.
+    ScheduleOverrideRequest:
+      type: object
+      required:
+        - date
+        - timeSlots
+      properties:
+        date:
+          type: string
+          format: date
+          description: The date of the schedule override (YYYY-MM-DD format).
+        timeSlots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+          description: Time slots for this date. Empty array means the stylist is unavailable on this date.
+        note:
+          type: string
+          description: Optional note about this schedule override.
+    ScheduleOverrideUpdateRequest:
+      type: object
+      required:
+        - timeSlots
+      properties:
+        timeSlots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSlot'
+          description: Time slots for this date. Empty array means the stylist is unavailable on this date.
+        note:
+          type: string
+          description: Optional note about this schedule override.
+    LocationResponse:
+      type: object
+      required:
+        - id
+        - name
+        - addressLine1
+        - city
+        - state
+        - postalCode
+        - formattedAddress
+        - latitude
+        - longitude
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the location.
+        name:
+          type: string
+          description: Name of the location.
+        addressLine1:
+          type: string
+          description: First line of the address.
+        addressLine2:
+          type: string
+          description: Second line of the address (optional).
+        city:
+          type: string
+          description: City of the location.
+        state:
+          type: string
+          description: State or region of the location.
+        postalCode:
+          type: string
+          description: Postal code of the location.
+        formattedAddress:
+          type: string
+          description: Address of the location.
+        phoneNumber:
+          type: string
+          description: Phone number of the location.
+        website:
+          type: string
+          format: uri
+          description: Website URL of the location.
+        email:
+          type: string
+          format: email
+          description: Email address of the location.
+        latitude:
+          type: number
+          format: double
+          description: Latitude of the location.
+        longitude:
+          type: number
+          format: double
+          description: Longitude of the location.
+        timezone:
+          type: string
+          description: IANA timezone identifier for this location.
+          example: America/New_York
+    StylistWorkLocationResponse:
+      type: object
+      required:
+        - id
+        - startDate
+        - isCurrent
+        - location
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the work location.
+        locationId:
+          type: string
+          format: uuid
+          description: Unique identifier for the location.
+        startDate:
+          type: string
+          format: date
+          description: Start date of the work location.
+        endDate:
+          type: string
+          format: date
+          description: End date of the work location.
+        isCurrent:
+          type: boolean
+          description: Whether this is the current work location.
+        location:
+          $ref: '#/components/schemas/LocationResponse'
+    StylistWorkLocationRequest:
+      type: object
+      required:
+        - locationId
+        - startDate
+      properties:
+        locationId:
+          type: string
+          format: uuid
+          description: Unique identifier for the location.
+        startDate:
+          type: string
+          format: date
+          description: Start date of the work location.
+        endDate:
+          type: string
+          format: date
+          description: End date of the work location.
+    PortfolioPhotoResponse:
+      type: object
+      required:
+        - id
+        - stylist_id
+        - storage_url
+        - service
+        - display_position
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Photo unique identifier
+        stylist_id:
+          type: string
+          format: uuid
+          description: Owner stylist ID
+        storage_url:
+          type: string
+          format: uri
+          description: Photo storage URL
+        description:
+          type: string
+          description: Photo description (may be null)
+          nullable: true
+        service:
+          $ref: '#/components/schemas/ServiceResponse'
+        display_position:
+          type: integer
+          format: int32
+          description: Sort order within portfolio
+        created_at:
+          type: string
+          format: date-time
+          description: Upload timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+    PortfolioPhotoCreateRequest:
+      type: object
+      required:
+        - storage_url
+        - service_id
+      properties:
+        storage_url:
+          type: string
+          format: uri
+          description: Full URL to the uploaded photo in object storage
+          example: https://storage.example.com/photos/abc123.jpg
+        description:
+          type: string
+          maxLength: 200
+          description: Optional photo description (max 200 characters)
+          example: Balayage color on long hair
+        service_id:
+          type: string
+          format: uuid
+          description: Service ID from existing services catalog (/services endpoint)
+          example: 123e4567-e89b-12d3-a456-426614174000
+    PortfolioPhotoUpdateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 200
+          description: Updated photo description
+          example: 'Updated: Balayage with highlights'
+        service_id:
+          type: string
+          format: uuid
+          description: Updated service ID from existing services catalog
+        display_position:
+          type: integer
+          format: int32
+          minimum: 1
+          description: New display position (1-based)
+          example: 15
+    PortfolioReorderRequest:
+      type: object
+      required:
+        - photo_positions
+      properties:
+        photo_positions:
+          type: array
+          minItems: 1
+          description: Array of photo ID and new position pairs
+          items:
+            type: object
+            required:
+              - id
+              - position
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Photo ID
+              position:
+                type: integer
+                format: int32
+                minimum: 1
+                description: New display position
+    StylistSearchResponse:
+      type: object
+      required:
+        - displayName
+        - username
+        - type
+        - yearsExperience
+      properties:
+        displayName:
+          type: string
+          description: Display name of the stylist.
+        username:
+          type: string
+          description: Username of the stylist.
+        avatarUrl:
+          type: string
+          description: Avatar URL of the stylist.
+        bio:
+          type: string
+          description: Bio of the stylist.
+        type:
+          type: string
+          description: Profession type of the stylist. Valid values are the slugs returned by GET /stylist-types.
+        yearsExperience:
+          type: integer
+          format: int16
+          example: 5
+          description: Years of experience working as a stylist.
+        startingPrice:
+          type: integer
+          format: int32
+          nullable: true
+          example: 2500
+          description: Starting price for services in cents. Null if no services are offered.
+        startingPriceCurrency:
+          type: string
+          nullable: true
+          example: USD
+          description: Currency code for the starting price. Defaults to USD.
+        reviewCount:
+          type: integer
+          description: Number of reviews for the stylist.
+          example: 100
+        rating:
+          type: number
+          format: double
+          description: Average rating of the stylist.
+          example: 4.5
+        specialties:
+          type: array
+          items:
+            type: string
+          description: List of specialties of the stylist.
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+          description: List of latest reviews for the stylist.
+        location:
+          $ref: '#/components/schemas/LocationResponse'
+    StylistAuthenticatedSearchResponse:
+      allOf:
+        - $ref: '#/components/schemas/StylistSearchResponse'
+        - type: object
+          properties:
+            isLiked:
+              type: boolean
+    UsernameAvailabilityCheckResponse:
+      properties:
+        available:
+          type: boolean
+          description: Whether the username is available
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Alternative username suggestions if unavailable
+      required:
+        - available
+    SocialMediaLink:
+      type: object
+      required:
+        - platform
+        - url
+      properties:
+        platform:
+          type: string
+          description: Name of the social media platform (e.g., Instagram, TikTok).
+        handle:
+          type: string
+          description: Handle or username on the social media platform.
+        url:
+          type: string
+          format: uri
+          description: URL to the social media profile.
+    Contact:
+      type: object
+      properties:
+        phone:
+          type: string
+          description: Phone number of the contact.
+        email:
+          type: string
+          format: email
+          description: Email address of the contact.
+        website:
+          type: string
+          format: uri
+          description: Website URL of the contact.
+        Social:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialMediaLink'
+          description: List of social media links for the contact.
+    StylistPublicResponse:
+      allOf:
+        - $ref: '#/components/schemas/StylistSearchResponse'
+        - type: object
+          properties:
+            bio:
+              type: string
+            offersTravel:
+              type: boolean
+              description: When true, the stylist is willing to travel to the client's location.
+            services:
+              type: array
+              items:
+                $ref: '#/components/schemas/ServiceResponse'
+            contact:
+              $ref: '#/components/schemas/Contact'
+    StylistAuthenticatedResponse:
+      allOf:
+        - $ref: '#/components/schemas/StylistPublicResponse'
+        - type: object
+          properties:
+            isLiked:
+              type: boolean
+            isCurrentUser:
+              type: boolean
+    AvailabilitySlot:
+      type: object
+      description: A single available time slot, as an absolute UTC instant
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: RFC3339 UTC instant (e.g. 2026-06-07T13:00:00Z)
+          example: '2026-06-07T13:00:00Z'
+        end:
+          type: string
+          format: date-time
+          description: RFC3339 UTC instant (e.g. 2026-06-07T13:30:00Z)
+          example: '2026-06-07T13:30:00Z'
+      required:
+        - start
+        - end
+    DailyAvailability:
+      type: object
+      description: All available slots for a single calendar day
+      properties:
+        date:
+          type: string
+          format: date
+          description: Calendar date (YYYY-MM-DD)
+        slots:
+          type: array
+          description: Zero or more available time slots on this date
+          items:
+            $ref: '#/components/schemas/AvailabilitySlot'
+      required:
+        - date
+        - slots
+    AvailabilityResponse:
+      type: object
+      description: Full availability payload
+      properties:
+        username:
+          type: string
+          description: Echo of the requested stylist username
+        timezone:
+          type: string
+          description: IANA timezone identifier anchoring the stylist's business hours. Slot start/end are UTC instants; clients convert to this timezone (or the viewer's) for display.
+          example: America/New_York
+        startDate:
+          type: string
+          format: date
+          description: Echo of the query’s start_date
+        endDate:
+          type: string
+          format: date
+          description: Echo of the query’s end_date
+        availability:
+          type: array
+          description: Array of per-day availability objects
+          items:
+            $ref: '#/components/schemas/DailyAvailability'
+      required:
+        - username
+        - startDate
+        - endDate
+        - availability
+    AppointmentRequest:
+      type: object
+      required:
+        - username
+        - services
+        - startTime
+      properties:
+        username:
+          type: string
+          description: Username of the stylist.
+        services:
+          type: array
+          description: List of services to book. Each service is identified by its ID.
+          minItems: 1
+          items:
+            type: object
+            required:
+              - id
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Unique ID identifier for the service.
+                example: 123e4567-e89b-12d3-a456-426614174000
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the appointment.
+          example: '2023-10-01T10:00:00Z'
+        locationType:
+          $ref: '#/components/schemas/ServiceLocationType'
+        locationId:
+          type: string
+          format: uuid
+          description: ID of the stylist's business location. Required when locationType is at_stylist.
+        travelAddress:
+          type: object
+          description: Client-supplied address for at_client bookings. Required when locationType is at_client.
+          required:
+            - line1
+            - city
+            - state
+            - postalCode
+            - country
+          properties:
+            line1:
+              type: string
+              description: Street address line 1.
+            line2:
+              type: string
+              description: Street address line 2 (optional).
+            city:
+              type: string
+            state:
+              type: string
+            postalCode:
+              type: string
+            country:
+              type: string
+              example: US
+    ReviewCreate:
+      type: object
+      required:
+        - rating
+        - comment
+        - bookingId
+      properties:
+        rating:
+          type: integer
+          format: int16
+          description: Rating for the stylist.
+          example: 5
+        bookingId:
+          type: string
+          format: uuid
+          description: ID of the appointment being reviewed.
+        comment:
+          type: string
+          description: Review comment.
+          example: Excellent service!
+    ReviewAppointmentDetails:
+      type: object
+      description: Appointment details for the review page, accessed via token.
+      required:
+        - appointmentId
+        - stylistUsername
+        - stylistDisplayName
+        - appointmentDate
+        - services
+        - tokenStatus
+      properties:
+        appointmentId:
+          type: string
+          format: uuid
+          description: ID of the appointment being reviewed.
+        stylistUsername:
+          type: string
+          description: Username of the stylist.
+        stylistDisplayName:
+          type: string
+          description: Display name of the stylist.
+        stylistAvatarUrl:
+          type: string
+          format: uri
+          description: URL of the stylist's avatar image.
+        appointmentDate:
+          type: string
+          format: date-time
+          description: Date and time of the appointment.
+        services:
+          type: array
+          items:
+            type: string
+          description: List of service names performed during the appointment.
+        locationName:
+          type: string
+          description: Name of the location where the appointment took place.
+        tokenStatus:
+          type: string
+          enum:
+            - token_valid
+            - token_used
+            - token_expired
+          description: Current status of the review token.
+    ReviewCreateWithToken:
+      type: object
+      required:
+        - rating
+        - comment
+      properties:
+        rating:
+          type: integer
+          format: int16
+          minimum: 1
+          maximum: 5
+          description: Rating for the stylist.
+          example: 5
+        comment:
+          type: string
+          description: Review comment.
+          example: Excellent service!
+    ReviewUpdate:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+    ReplyUpdate:
+      type: object
+      required:
+        - reply_comment
+      properties:
+        reply_comment:
+          type: string
+    ReplyCreate:
+      type: object
+      required:
+        - reply_comment
+      properties:
+        reply_comment:
+          type: string
+    CartServiceSnapshot:
+      type: object
+      required:
+        - id
+        - name
+        - duration
+        - category
+        - priceCents
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Service ID.
+        name:
+          type: string
+          description: Service name.
+        description:
+          type: string
+          description: Service description.
+        duration:
+          type: integer
+          description: Service duration in minutes.
+        category:
+          type: string
+          description: Service category.
+        priceCents:
+          type: integer
+          description: Price of service in cents
+        includedAddons:
+          type: array
+          items:
+            type: string
+          description: Addon slugs at time service was added to cart
+          example:
+            - wash
+            - blow-dry
+        isStartingAt:
+          type: boolean
+          description: Indicates if the price was a starting/minimum price at cart time.
+    CartItemResponse:
+      type: object
+      required:
+        - id
+        - cartId
+        - serviceId
+        - createdAt
+        - updatedAt
+        - service
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the cart item.
+        cartId:
+          type: string
+          format: uuid
+          description: ID of the cart containing this item.
+        serviceId:
+          type: string
+          format: uuid
+          description: ID of the service.
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the item was added to cart.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the item was last updated.
+        service:
+          $ref: '#/components/schemas/CartServiceSnapshot'
+    CartStylistSnapshot:
+      type: object
+      required:
+        - username
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: Stylist display name.
+        avatarUrl:
+          type: string
+          format: uri
+          description: Stylist avatar URL.
+        username:
+          type: string
+          description: Stylist username.
+    CartLocationSnapshot:
+      type: object
+      required:
+        - address
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Location ID. Absent for at_client (travel) carts.
+        name:
+          type: string
+          description: Location name. Absent for at_client (travel) carts.
+        address:
+          type: string
+          description: Location address (business address for at_stylist; client-supplied address for at_client).
+    CartPromotionSnapshot:
+      type: object
+      required:
+        - code
+        - type
+        - value
+        - appliesTo
+        - capturedAt
+      properties:
+        code:
+          type: string
+          description: Promotion code.
+          example: FALL24
+        type:
+          type: string
+          enum:
+            - percentage
+            - flat
+            - bogo
+          description: Type of promotion.
+        value:
+          type: number
+          format: double
+          description: Promotion value (percentage or flat amount).
+          example: 10
+        appliesTo:
+          type: array
+          items:
+            type: string
+            enum:
+              - service
+              - cart
+          description: Scope where the promotion applies.
+        capturedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the promotion snapshot was captured.
+    CartResponse:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+        - updatedAt
+        - expiresAt
+        - totalItems
+        - totalPrice
+        - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the cart.
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who owns the cart (null for guest carts).
+        sessionId:
+          type: string
+          description: Session ID for guest carts (null for authenticated carts).
+        status:
+          type: string
+          enum:
+            - active
+            - abandoned
+            - checked_out
+          description: Current status of the cart.
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was last updated.
+        abandonedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was abandoned (if applicable).
+        checkedOutAt:
+          type: string
+          format: date-time
+          description: Timestamp when the cart was checked out (if applicable).
+        expiresAt:
+          type: string
+          format: date-time
+          description: Timestamp when the cart expires.
+        totalItems:
+          type: integer
+          description: Total number of items in the cart.
+        totalPrice:
+          type: integer
+          description: Total price of all items in cents.
+        currency:
+          type: string
+          default: USD
+          description: Currency code for the cart total.
+        preferredStartTime:
+          type: string
+          format: date-time
+          description: Preferred start time for all appointments in the cart.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata for the cart.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemResponse'
+          description: List of items in the cart.
+        stylistUsername:
+          type: string
+          description: Username of the stylist providing service
+        notes:
+          type: string
+          description: Updated notes or preferences for the service.
+        stylist:
+          $ref: '#/components/schemas/CartStylistSnapshot'
+        location:
+          $ref: '#/components/schemas/CartLocationSnapshot'
+        promotionSnapshot:
+          $ref: '#/components/schemas/CartPromotionSnapshot'
+    CartCreateRequest:
+      required:
+        - stylistUsername
+      type: object
+      properties:
+        stylistUsername:
+          type: string
+          description: Username of the stylist providing service
+        locationType:
+          $ref: '#/components/schemas/ServiceLocationType'
+        travelAddress:
+          type: object
+          description: Client-supplied address for at_client carts. Required when locationType is at_client.
+          required:
+            - line1
+            - city
+            - state
+            - postalCode
+            - country
+          properties:
+            line1:
+              type: string
+            line2:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            postalCode:
+              type: string
+            country:
+              type: string
+              example: US
+    CartMergeRequest:
+      type: object
+      required:
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+          description: Session ID of the guest cart to merge with the authenticated user.
+    CartUpdateRequest:
+      type: object
+      properties:
+        preferredStartTime:
+          type: string
+          format: date-time
+          description: Preferred start time for all appointments in the cart.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata for the cart.
+        stylistUsername:
+          type: string
+          description: Username of the stylist providing service
+        notes:
+          type: string
+          description: Additional notes or preferences for the service.
+    CartItemCreateRequest:
+      type: object
+      required:
+        - serviceId
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+          description: ID of the service being added to cart.
+    CartItemUpdateRequest:
+      type: object
+    CartCheckoutRequest:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          description: Payment method for the checkout (future use).
+        notes:
+          type: string
+          description: Additional notes for the checkout.
+    CartCheckoutResponse:
+      type: object
+      required:
+        - cartId
+        - appointmentId
+        - totalPrice
+        - currency
+      properties:
+        cartId:
+          type: string
+          format: uuid
+          description: ID of the checked out cart.
+        appointmentId:
+          type: string
+          format: uuid
+          description: ID of the created appointment.
+        totalPrice:
+          type: integer
+          description: Total price of all appointments in cents.
+        currency:
+          type: string
+          description: Currency code for the total price.
+        checkedOutAt:
+          type: string
+          format: date-time
+          description: Timestamp when the checkout was completed.
+    CatalogServiceResponse:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - description
+        - category
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the service.
+        slug:
+          type: string
+          description: Slug for the service, used in URLs.
+        name:
+          type: string
+          description: Name of the service.
+        description:
+          type: string
+          description: Description of the service.
+        category:
+          type: string
+          description: Grouping label for UI organization (e.g. "Manicure", "Pedicure", "Haircuts").
+    AddonResponse:
+      type: object
+      required:
+        - slug
+        - name
+      properties:
+        slug:
+          type: string
+          description: Addon identifier slug (e.g. wash, blow-dry)
+        name:
+          type: string
+          description: Human-readable addon name
+    LocationRequest:
+      type: object
+      required:
+        - name
+        - addressLine1
+        - city
+        - state
+        - postalCode
+      properties:
+        name:
+          type: string
+          description: Name of the location.
+        addressLine1:
+          type: string
+          description: First line of the address.
+        addressLine2:
+          type: string
+          description: Second line of the address (optional).
+        city:
+          type: string
+          description: City of the location.
+        state:
+          type: string
+          description: State or region of the location.
+        postalCode:
+          type: string
+          description: Postal code of the location.
+        phoneNumber:
+          type: string
+          description: Phone number of the location.
+        website:
+          type: string
+          format: uri
+          description: Website URL of the location.
+        email:
+          type: string
+          format: email
+          description: Email address of the location.
+    StylistTypeResponse:
+      type: object
+      required:
+        - slug
+        - name
+      properties:
+        slug:
+          type: string
+          description: URL-safe identifier for the stylist type (e.g. barber, stylist, nail-technician).
+          example: nail-technician
+        name:
+          type: string
+          description: Human-readable display name.
+          example: Nail Technician

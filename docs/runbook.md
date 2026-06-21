@@ -42,9 +42,18 @@ Configure these **GitHub Actions secrets**: `API_BASE_URL`, `WEB_BASE_URL`,
 `TEST_CLIENT_EMAIL/PASSWORD`, `TEST_STYLIST_EMAIL/PASSWORD`, `SEED_URL`, `SEED_TOKEN`,
 `TEST_CARD_DECLINE`. The HTML report is uploaded as an artifact.
 
-## When the real spec arrives
-1. Replace `spec/glamer.openapi.yaml` with the real document.
-2. `pnpm gen:types` and fix any type errors the new contract surfaces.
-3. Set real URLs/creds in `.env` (and CI secrets) → journey tests activate.
-4. Replace placeholder selectors/ids in `tests/web` and `tests/cross` with real ones.
-5. Wire `fixtures/seed.ts` to the actual UAT seed/reset mechanism.
+## Auth model (Firebase)
+The real spec authenticates via Firebase: the suite signs in to Firebase with a test
+account (`getFirebaseIdToken` in `support/auth.ts`), exchanges the ID token at
+`POST /session` for a `glamer-session` cookie, and rides that cookie (managed by
+`support/cookie-fetch.ts`) on all later calls. Set `FIREBASE_API_KEY` plus the test
+account creds in `.env`.
+
+## Remaining to go live
+The real `spec/glamer.openapi.yaml` is in place and the suite is wired to it. To activate:
+1. Set real `API_BASE_URL` / `WEB_BASE_URL`, `FIREBASE_API_KEY`, test creds, and
+   `TEST_STYLIST_USERNAME` in `.env` (and CI secrets) → journey tests activate.
+2. Replace placeholder service/appointment ids in `tests/api` & `tests/cross` with
+   seed-data ids, and placeholder selectors in `tests/web` with real ones.
+3. Wire `fixtures/seed.ts` to the actual UAT seed/reset mechanism.
+4. Re-run `pnpm gen:types` whenever the spec updates; fix any contract drift.

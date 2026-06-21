@@ -39,8 +39,8 @@ TypeScript · [Playwright](https://playwright.dev) (one runner for API + web) ·
 for a typed API client · `openapi-response-validator` for runtime contract checks · GitHub Actions CI.
 
 ## Status
-Scaffold with a **placeholder OpenAPI spec** and example journeys. Journey tests skip
-themselves until real UAT URLs are configured. To go live, see
-"When the real spec arrives" in [docs/runbook.md](docs/runbook.md). Outstanding product
-questions (payments, notifications, etc.) are listed at the bottom of
-[docs/critical-journeys.md](docs/critical-journeys.md).
+Wired to the **real Glamer OpenAPI spec** (`spec/glamer.openapi.yaml`): Firebase →
+`/session` cookie auth, `/appointments` lifecycle, and typed clients throughout. Journey
+tests skip themselves until real UAT URLs/creds are configured. To activate, see
+"Remaining to go live" in [docs/runbook.md](docs/runbook.md). Outstanding behavioral
+questions are tracked at the bottom of [docs/critical-journeys.md](docs/critical-journeys.md).

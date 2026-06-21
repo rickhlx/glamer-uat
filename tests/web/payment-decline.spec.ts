@@ -17,11 +17,11 @@ test.describe('C-4 payment decline', () => {
     await page.getByRole('button', { name: /select/i }).first().click();
     await page.getByRole('button', { name: /available/i }).first().click();
 
-    // [CONFIRM] how to enter the always-declines test card in the payment UI.
-    // ...fill declining card from env.payments.declineCard...
-    await page.getByRole('button', { name: /confirm|pay|book/i }).click();
+    // [CONFIRM] payment UI for the cart/checkout flow and how to enter an
+    // always-declines test card (likely a Stripe/PSP test card in the iframe).
+    await page.getByRole('button', { name: /confirm|pay|book|checkout/i }).click();
 
     await expect(page.getByText(/declined|payment failed/i)).toBeVisible();
-    await expect(page.getByText(/booking (requested|confirmed)/i)).toHaveCount(0);
+    await expect(page.getByText(/requested|confirmed/i)).toHaveCount(0);
   });
 });

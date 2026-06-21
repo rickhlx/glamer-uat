@@ -142,11 +142,31 @@ The API is the foundation; these run on every change and underpin everything abo
 
 ## Open questions to resolve before locking
 
-1. **Payment model** — when is a client charged (at request, at acceptance, at completion)? Hold vs. capture? Refund policy on cancel/decline?
-2. **Notifications** — push, email, in-app, or all? What's the expected latency for "stylist receives request"?
-3. **Reschedule** — is it a first-class feature, or cancel + rebook?
-4. **Completion trigger** — auto on time elapse, or manual by stylist?
-5. **Concurrency** — what's the guaranteed behavior for two clients racing for the same slot?
-6. **Payouts scope** — is earnings/payout in scope for this UAT round?
+> **Update:** the real OpenAPI spec (`spec/glamer.openapi.yaml`) landed and answers
+> several of these. Remaining unknowns are behavioral details the spec doesn't pin down.
 
-Answering these turns the **[CONFIRM]** items into concrete, assertable acceptance criteria.
+**Resolved by the spec:**
+- **Auth** — Firebase ID token → `POST /session` → `glamer-session` cookie (all other
+  endpoints are cookie-authed). Tests need a Firebase Web API key for the UAT project.
+- **Booking lifecycle** — `POST /appointments`, then explicit actions:
+  `confirm`, `decline`, `complete`, `mark-paid`, `no-show-client`, `no-show-stylist`,
+  `cancel-stylist` (stylist), and `DELETE /appointments/{id}` (client cancel).
+  Statuses: `requested · confirmed · completed · completed_auto · canceled_by_client ·
+  canceled_by_stylist · expired · no_show_client · no_show_stylist`.
+- **Payment** — `paymentStatus` (`unpaid · authorized · captured · refunded ·
+  partial_refund`) with an explicit `mark-paid` action; there's also a cart/checkout flow
+  (`/carts/{id}/checkout`). Reschedule exists as `PUT /appointments/{id}` (update).
+- **Reviews / no-shows** — first-class endpoints exist (`/reviews`, `no-show-*`).
+
+**Still open (need product/behavioral confirmation):**
+1. **Charge timing** — at request, confirm, or completion? When does `mark-paid` happen,
+   and what releases an authorization on decline/cancel?
+2. **Notifications** — push/email/in-app (devices endpoints exist); expected latency for
+   "stylist receives request"?
+3. **Completion trigger** — manual `complete` vs. `completed_auto` (auto on elapse)?
+4. **Concurrency** — guaranteed behavior for two clients racing the same slot?
+5. **Payouts scope** — is earnings/payout in scope for this UAT round?
+6. **UAT specifics** — the Firebase UAT project + API key, real test usernames/service
+   ids, and the seed/reset mechanism.
+
+Resolving these turns the remaining **[CONFIRM]** items into assertable criteria.

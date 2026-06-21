@@ -1,23 +1,39 @@
 import { test, expect, env } from '../../support/fixtures.js';
 
-// X-2 — Stylist declines a request → client is notified, slot is released.
+// X-2 — Stylist declines a request → status reflects, slot is released.
 test.describe('X-2 stylist declines', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
-  test('X-2 declined booking frees the slot and notifies the client @critical', async ({
+  test('X-2 declined request is reflected and frees the slot @critical', async ({
+    clientApi,
     stylistApi,
     api,
   }) => {
-    const declined = await stylistApi.POST('/bookings/{bookingId}/transition', {
-      params: { path: { bookingId: 'seed-requested-booking' } },
-      body: { action: 'decline' },
+    // Client requests a booking.
+    const created = await clientApi.POST('/appointments', {
+      body: {
+        username: env.stylist.username,
+        services: [{ id: '00000000-0000-0000-0000-000000000000' }],
+        startTime: '2099-04-01T10:00:00Z',
+      },
     });
-    expect(declined.data?.status).toBe('declined');
+    const id = created.data!.id;
 
-    // Slot is bookable again. [CONFIRM] charge/hold released — depends on payment model.
-    const { data } = await api.GET('/stylists/{stylistId}/availability', {
-      params: { path: { stylistId: 'seed-stylist' } },
+    // Stylist declines.
+    const declined = await stylistApi.POST('/appointments/{id}/decline', {
+      params: { path: { id } },
+      body: { reason: 'UAT decline' },
     });
-    expect(data?.some((slot) => slot.available)).toBe(true);
+    expect(declined.data?.status).toBe('canceled_by_stylist');
+
+    // Slot is offered again. [CONFIRM] charge/hold released — depends on payment model.
+    const { data } = await api.GET('/stylists/{username}/availability', {
+      params: {
+        path: { username: env.stylist.username },
+        query: { start_date: '2099-04-01', end_date: '2099-04-01' },
+      },
+    });
+    const day = data?.availability.find((d) => d.date === '2099-04-01');
+    expect(day?.slots.length ?? 0).toBeGreaterThan(0);
   });
 });

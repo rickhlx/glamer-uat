@@ -1,39 +1,40 @@
 import { test, expect, env } from '../../support/fixtures.js';
 
 // A-3 — Booking lifecycle: the state machine must enforce valid transitions.
-test.describe('A-3 booking lifecycle', () => {
+// Concrete stylist username / service ids come from seed data.
+test.describe('A-3 appointment lifecycle', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
-  test('A-3 create → accept moves a booking to accepted @critical', async ({
-    clientSession,
+  test('A-3 book → stylist confirm moves an appointment to confirmed @critical', async ({
+    clientApi,
     stylistApi,
   }) => {
-    // Client requests a booking. (Concrete stylist/service/slot come from seed data.)
-    const asClient = (await import('../../support/api-client.js')).makeApiClient(
-      clientSession.token,
-    );
-    const created = await asClient.POST('/bookings', {
-      body: { stylistId: 'seed-stylist', serviceId: 'seed-service', slotStart: '2099-01-01T10:00:00Z' },
+    // Client books.
+    const created = await clientApi.POST('/appointments', {
+      body: {
+        username: env.stylist.username,
+        services: [{ id: '00000000-0000-0000-0000-000000000000' }],
+        startTime: '2099-01-01T10:00:00Z',
+      },
     });
     expect(created.response.status).toBe(201);
-    expect(created.data).toMatchSpec({ path: '/bookings', method: 'post', status: 201 });
-    const bookingId = created.data!.id;
+    expect(created.data).toMatchSpec({ path: '/appointments', method: 'post', status: 201 });
+    const id = created.data!.id;
+    expect(created.data!.status).toBe('requested');
 
-    // Stylist accepts.
-    const accepted = await stylistApi.POST('/bookings/{bookingId}/transition', {
-      params: { path: { bookingId } },
-      body: { action: 'accept' },
+    // Stylist confirms.
+    const confirmed = await stylistApi.POST('/appointments/{id}/confirm', {
+      params: { path: { id } },
     });
-    expect(accepted.response.status).toBe(200);
-    expect(accepted.data?.status).toBe('accepted');
+    expect(confirmed.response.status).toBe(200);
+    expect(confirmed.data?.status).toBe('confirmed');
   });
 
-  test('A-3 invalid transition is rejected @critical', async ({ stylistApi }) => {
-    // e.g. completing a booking that was never accepted.
-    const { response } = await stylistApi.POST('/bookings/{bookingId}/transition', {
-      params: { path: { bookingId: 'seed-requested-booking' } },
-      body: { action: 'complete' },
+  test('A-3 an invalid transition is rejected @critical', async ({ stylistApi }) => {
+    // Completing an appointment that was never confirmed.
+    const { response } = await stylistApi.POST('/appointments/{id}/complete', {
+      params: { path: { id: '11111111-1111-1111-1111-111111111111' } },
     });
-    expect(response.status).toBe(409);
+    expect([400, 409]).toContain(response.status);
   });
 });
