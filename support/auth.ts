@@ -1,5 +1,5 @@
 import { env } from './env.js';
-import { makeApiClient, type GlamerClient } from './api-client.js';
+import { makeApiClient, setSessionCookie, type GlamerClient } from './api-client.js';
 
 /**
  * Glamer authentication is Firebase-based:
@@ -43,12 +43,14 @@ export async function authenticate(
   password: string,
 ): Promise<GlamerClient> {
   const idToken = await getFirebaseIdToken(email, password);
-  const { response } = await client.POST('/session', {
+  const { data, response } = await client.POST('/session', {
     headers: { Authorization: `Bearer ${idToken}` },
   });
-  if (!response.ok) {
+  if (!response.ok || !data) {
     throw new Error(`POST /session failed for ${email} (HTTP ${response.status})`);
   }
+  // The session value comes back in the body, not a Set-Cookie header.
+  setSessionCookie(client, data.session);
   return client;
 }
 
