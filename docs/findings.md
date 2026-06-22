@@ -7,7 +7,21 @@ don't block the gate as noise but flip to a real failure the moment they're fixe
 Severities follow [principles.md](./principles.md).
 
 **Status:** ✅ F1, F2, F7 fixed & verified. 🔴 Open: F4 (#366), F5 (#367), F6 (#368),
-F8 (#386), F9 (#387).
+F8 (#386), F9 (#387), F10 (#388).
+
+---
+
+## F10 — Canceled/declined appointments don't release their slot (availability leak)
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/388 — **open**
+- **Severity:** P2. **Endpoints:** `POST /appointments/{id}/decline`, `DELETE /appointments/{id}`.
+- **Actual:** after a decline (`canceled_by_stylist`) or client cancel (`204`), the slot
+  stays unavailable — `GET /stylists/{username}/availability` never offers it again
+  (16 → 14 slots on book, stays 14 after cancel).
+- **Expected:** canceling/declining frees the slot for rebooking.
+- **Impact:** slots leak permanently; also means test cleanup (`cancelAppointment`)
+  doesn't recover availability — a seed/reset is needed to avoid exhausting slots.
+- **Test:** `tests/cross/decline.spec.ts` (X-2 "a declined slot is released"), `test.fail` → F10.
 
 ---
 

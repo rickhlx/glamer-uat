@@ -9,19 +9,29 @@ test.describe('X-4 availability sync', () => {
     api,
   }) => {
     // Stylist sets weekly hours (iOS side via API). Wall-clock times in their tz.
+    // Set the full work week (not just one day) so this doesn't reduce the
+    // availability other booking journeys depend on.
+    const hours = [{ start: '09:00', end: '17:00' }];
     const updated = await stylistApi.PUT('/me/stylist/availability', {
       body: {
         timezone: 'America/New_York',
-        monday: [{ start: '09:00', end: '17:00' }],
+        monday: hours,
+        tuesday: hours,
+        wednesday: hours,
+        thursday: hours,
+        friday: hours,
       },
     });
     expect(updated.response.status).toBe(204); // 204 No Content per spec
 
-    // Public availability reflects the stylist's hours, is well-formed, and conforms.
+    // Public availability reflects the stylist's hours: conforms and yields real slots.
+    const today = new Date();
+    const start = today.toISOString().slice(0, 10);
+    const end = new Date(today.getTime() + 14 * 86_400_000).toISOString().slice(0, 10);
     const { data, response } = await api.GET('/stylists/{username}/availability', {
       params: {
         path: { username: env.stylist.username },
-        query: { start_date: '2099-06-01', end_date: '2099-06-07' },
+        query: { start_date: start, end_date: end },
       },
     });
     expect(response.status).toBe(200);
@@ -30,6 +40,7 @@ test.describe('X-4 availability sync', () => {
       method: 'get',
       status: 200,
     });
-    expect(Array.isArray(data?.availability)).toBe(true);
+    const totalSlots = (data?.availability ?? []).reduce((n, d) => n + d.slots.length, 0);
+    expect(totalSlots).toBeGreaterThan(0);
   });
 });

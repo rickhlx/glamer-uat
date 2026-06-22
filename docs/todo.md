@@ -28,14 +28,15 @@ Each has a `test.fail` guard that flips to a real failure when fixed.
 | F6 | [#368](https://github.com/rickhlx/glamer-backend/issues/368) | `POST /me/register` `500` on duplicate email (should be `409`) |
 | F8 | [#386](https://github.com/rickhlx/glamer-backend/issues/386) | Double-booking `500` (should be `409`) |
 | F9 | [#387](https://github.com/rickhlx/glamer-backend/issues/387) | `services[].includedAddons` is `null` (should be `[]`) |
+| F10 | [#388](https://github.com/rickhlx/glamer-backend/issues/388) | Canceled/declined appointments don't release the slot (availability leak) |
 
 → When a fix lands, re-run; the guard alerts; then remove the `test.fail` marker and close the issue.
 
 ## ⏳ Test suites remaining
 
 ### Cross-surface (`tests/cross`)
-- [ ] **X-2 decline** (pure API) — refactor onto `bookIntoFreeSlot` + cleanup; should go green.
-- [ ] **X-4 availability sync** (pure API) — verify green against live UAT.
+- [x] **X-2 decline** (pure API) — green; slot-release split out as known-failing → F10.
+- [x] **X-4 availability sync** (pure API) — green (sets full week; verifies real slots).
 - [ ] **X-1 book→confirm** — uses the web UI for the client booking step → blocked on web selectors.
 - [ ] **X-3 client cancel** — uses the web UI → blocked on web selectors.
 
@@ -54,8 +55,10 @@ Each has a `test.fail` guard that flips to a real failure when fixed.
 
 ### Step 4 — Seed / reset
 - [ ] Decide the UAT reset mechanism (endpoint? script? none?) and wire `fixtures/seed.ts`.
-- [ ] Until then, booking tests self-clean via `cancelAppointment`; confirm that's sufficient
-  (slots are finite — repeated runs without reset could exhaust availability).
+- [ ] **Now more urgent:** because of F10, `cancelAppointment` does NOT free slots, so every
+  booking-test run permanently consumes ~2 slots. Without a reset, the stylist's availability
+  will eventually exhaust. Either fix F10, add a seed/reset, or periodically widen/refresh the
+  stylist's availability window.
 
 ### Step 6 — CI
 - [ ] Add GitHub Actions **secrets**: `API_BASE_URL`, `WEB_BASE_URL`, `FIREBASE_API_KEY`,

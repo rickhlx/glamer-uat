@@ -1,38 +1,52 @@
 import { test, expect, env } from '../../support/fixtures.js';
+import { bookIntoFreeSlot } from '../../support/booking.js';
 
-// X-2 — Stylist declines a request → status reflects, slot is released.
+// X-2 — Stylist declines a request.
 test.describe('X-2 stylist declines', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
-  test('X-2 declined request is reflected and frees the slot @critical', async ({
+  test('X-2 stylist decline cancels the appointment @critical', async ({
     clientApi,
     stylistApi,
     api,
     serviceId,
-    slotStart,
     stylistLocationId,
   }) => {
-    // Client requests a booking.
-    const created = await clientApi.POST('/appointments', {
-      body: {
-        username: env.stylist.username,
-        services: [{ id: serviceId }],
-        startTime: slotStart,
-        locationType: 'at_stylist',
-        locationId: stylistLocationId,
-      },
+    const booking = await bookIntoFreeSlot(clientApi, api, {
+      username: env.stylist.username,
+      serviceId,
+      locationId: stylistLocationId,
     });
-    const id = created.data!.id;
 
-    // Stylist declines.
     const declined = await stylistApi.POST('/appointments/{id}/decline', {
-      params: { path: { id } },
+      params: { path: { id: booking.id } },
       body: { reason: 'UAT decline' },
     });
+    expect(declined.response.status).toBe(200);
     expect(declined.data?.status).toBe('canceled_by_stylist');
+  });
 
-    // Slot is offered again. [CONFIRM] charge/hold released — depends on payment model.
-    const slotDate = slotStart.slice(0, 10); // YYYY-MM-DD
+  test('X-2 a declined slot is released @critical', async ({
+    clientApi,
+    stylistApi,
+    api,
+    serviceId,
+    stylistLocationId,
+  }) => {
+    // Known-failing: canceled/declined appointments don't free the slot.
+    // See docs/findings.md#f10 (glamer-backend#388).
+    test.fail();
+    const booking = await bookIntoFreeSlot(clientApi, api, {
+      username: env.stylist.username,
+      serviceId,
+      locationId: stylistLocationId,
+    });
+    await stylistApi.POST('/appointments/{id}/decline', {
+      params: { path: { id: booking.id } },
+      body: { reason: 'UAT decline' },
+    });
+
+    const slotDate = booking.startTime.slice(0, 10);
     const { data } = await api.GET('/stylists/{username}/availability', {
       params: {
         path: { username: env.stylist.username },
@@ -40,6 +54,6 @@ test.describe('X-2 stylist declines', () => {
       },
     });
     const day = data?.availability.find((d) => d.date === slotDate);
-    expect(day?.slots.length ?? 0).toBeGreaterThan(0);
+    expect(day?.slots.some((s) => s.start === booking.startTime)).toBe(true);
   });
 });
