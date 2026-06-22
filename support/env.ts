@@ -29,6 +29,15 @@ export const env = {
    * FIREBASE_API_KEY is the Firebase Web API key for the UAT project.
    */
   firebaseApiKey: optional('FIREBASE_API_KEY'),
+
+  /**
+   * The web target (staging.glamer.so) sits behind Vercel deployment
+   * protection. Generate a "Protection Bypass for Automation" secret in the
+   * Vercel project (Settings → Deployment Protection) and set it here; the web
+   * and cross projects then send the `x-vercel-protection-bypass` header so
+   * Playwright reaches the real app instead of Vercel's login wall.
+   */
+  vercelBypassSecret: optional('VERCEL_AUTOMATION_BYPASS_SECRET'),
   client: {
     email: required('TEST_CLIENT_EMAIL'),
     password: required('TEST_CLIENT_PASSWORD'),
