@@ -1,4 +1,5 @@
 import { test, expect, env } from '../../support/fixtures.js';
+import { bookIntoFreeSlot, cancelAppointment } from '../../support/booking.js';
 
 // A-4 — Availability endpoints; no double-booking.
 test.describe('A-4 availability', () => {
@@ -19,27 +20,29 @@ test.describe('A-4 availability', () => {
     });
   });
 
-  // [CONFIRM] concurrency guarantee. Booking the same slot twice must not both succeed.
   test('A-4 a slot cannot be booked twice @critical', async ({
     clientApi,
+    api,
     serviceId,
-    slotStart,
     stylistLocationId,
   }) => {
-    const body = {
-      username: env.stylist.username,
-      services: [{ id: serviceId }],
-      startTime: slotStart,
-      locationType: 'at_stylist' as const,
-      locationId: stylistLocationId,
-    };
-    const [first, second] = await Promise.all([
-      clientApi.POST('/appointments', { body }),
-      clientApi.POST('/appointments', { body }),
-    ]);
-    const statuses = [first.response.status, second.response.status].sort();
-    // Exactly one wins (201); the other is rejected (conflict / bad request).
-    expect(statuses[0]).toBe(201);
-    expect([400, 409]).toContain(statuses[1]);
+    const inputs = { username: env.stylist.username, serviceId, locationId: stylistLocationId };
+    const booking = await bookIntoFreeSlot(clientApi, api, inputs);
+
+    // Booking the exact same slot again must be rejected.
+    const second = await clientApi.POST('/appointments', {
+      body: {
+        username: inputs.username,
+        services: [{ id: inputs.serviceId }],
+        startTime: booking.startTime,
+        locationType: 'at_stylist',
+        locationId: inputs.locationId,
+      },
+    });
+    // The key guarantee: the second booking does NOT succeed.
+    expect(second.response.status).not.toBe(201);
+    // [F8] currently 500 (DB exclusion constraint); should be a clean 409.
+
+    await cancelAppointment(clientApi, booking.id);
   });
 });

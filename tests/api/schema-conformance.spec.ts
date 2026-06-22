@@ -1,4 +1,5 @@
 import { test, expect, env } from '../../support/fixtures.js';
+import { bookIntoFreeSlot, cancelAppointment } from '../../support/booking.js';
 
 // A-5 — Schema & error-shape conformance. Most A-5 coverage is implicit:
 // every toMatchSpec(...) across the suite *is* an A-5 assertion. These tests
@@ -7,11 +8,34 @@ test.describe('A-5 schema conformance', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
   test('A-5 stylist search conforms to spec @critical', async ({ api }) => {
-    // Known-failing: response violates the spec's oneOf. See docs/findings.md#f2 (glamer-backend#365).
-    test.fail();
     const { data, response } = await api.GET('/stylists');
     expect(response.status).toBe(200);
     expect(data).toMatchSpec({ path: '/stylists', method: 'get', status: 200 });
+  });
+
+  test('A-5 booking response conforms to spec @critical', async ({
+    clientApi,
+    api,
+    serviceId,
+    stylistLocationId,
+  }) => {
+    // Known-failing: services[].includedAddons returns null, spec says array.
+    // See docs/findings.md#f9 (glamer-backend#387).
+    test.fail();
+    const booking = await bookIntoFreeSlot(clientApi, api, {
+      username: env.stylist.username,
+      serviceId,
+      locationId: stylistLocationId,
+    });
+    try {
+      expect(booking.appointment).toMatchSpec({
+        path: '/appointments',
+        method: 'post',
+        status: 201,
+      });
+    } finally {
+      await cancelAppointment(clientApi, booking.id);
+    }
   });
 
   test('A-5 a missing stylist returns the spec error shape @important', async ({ api }) => {

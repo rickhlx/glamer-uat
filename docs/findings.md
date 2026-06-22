@@ -1,17 +1,39 @@
 # Glamer UAT — Findings
 
-Backend/contract issues surfaced by UAT, filed with the **glamer-backend** team
-(issues #364–369). Tests for these are marked known-failing (`test.fail`) and linked
-here, so they don't block the gate as noise but flip to a real failure the moment
-they're fixed.
+Backend/contract issues surfaced by UAT, filed with the **glamer-backend** team.
+Tests for these are marked known-failing (`test.fail`) and linked here, so they
+don't block the gate as noise but flip to a real failure the moment they're fixed.
 
 Severities follow [principles.md](./principles.md).
 
+**Status:** ✅ F1, F2, F7 fixed & verified. 🔴 Open: F4 (#366), F5 (#367), F6 (#368),
+F8 (#386), F9 (#387).
+
 ---
 
-## F1 — Auth failures return `400` instead of `401`
+## F8 — Double-booking a slot returns `500` instead of `409`
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/364
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/386 — **open**
+- **Severity:** P3. **Endpoint:** `POST /appointments`.
+- **Actual:** booking a taken slot → `500 "conflicting key value violates exclusion constraint"`.
+- **Expected:** `409 Conflict`. The constraint correctly prevents the double-booking; only the status code is wrong.
+- **Test:** `tests/api/availability.spec.ts` (A-4) asserts the second booking is rejected (passes today); the 409 expectation is tracked here.
+
+---
+
+## F9 — Appointment response `services[].includedAddons` is `null`, should be array
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/387 — **open**
+- **Severity:** P3. **Endpoint:** `POST /appointments` (and AppointmentResponse generally).
+- **Actual:** `includedAddons: null` → fails schema (`services/0/includedAddons: must be array`).
+- **Expected:** `[]` (or make the field nullable in the spec).
+- **Test:** `tests/api/schema-conformance.spec.ts` (A-5 booking conforms), `test.fail` → F9.
+
+---
+
+## F1 — Auth failures return `400` instead of `401` ✅ FIXED
+
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/364 — **closed, verified**
 
 - **Severity:** P3 (minor) — affects the error contract of every cookie-authed endpoint.
 - **Endpoints:** all `cookieAuth` endpoints (observed on `HEAD /session`, `GET /me/`).
@@ -28,9 +50,9 @@ Severities follow [principles.md](./principles.md).
 
 ---
 
-## F2 — `GET /stylists` response doesn't conform to its OpenAPI schema
+## F2 — `GET /stylists` response doesn't conform to its OpenAPI schema ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/365
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/365 — **closed, verified**
 
 - **Severity:** P2 (major) — contract conformance gap on a core discovery endpoint.
 - **Endpoint:** `GET /stylists` (200).
@@ -91,9 +113,9 @@ Severities follow [principles.md](./principles.md).
 
 ---
 
-## F7 — Booking `500`s when the client has no client profile (blocker)
+## F7 — Booking `500`s when the client has no client profile (blocker) ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/369
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/369 — **closed, verified** (registered clients can now book)
 
 - **Severity:** P1 for UAT (blocks all booking journeys) — likely P2 product bug.
 - **Endpoint:** `POST /appointments`.

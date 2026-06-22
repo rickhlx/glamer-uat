@@ -574,6 +574,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /me/uploads/presign:
+    post:
+      summary: Request a presigned upload URL
+      description: |
+        Returns a short-lived presigned URL the client uses to upload a file
+        directly to object storage. After uploading, the returned public_url can
+        be registered (e.g. as a portfolio photo's storage_url).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+      responses:
+        '201':
+          description: Presigned upload URL created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignUploadResponse'
+        '400':
+          description: Invalid content type or file too large.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /me/reviews:
     get:
       summary: Get user's own reviews
@@ -1603,9 +1643,7 @@ paths:
                   data:
                     type: array
                     items:
-                      oneOf:
-                        - $ref: '#/components/schemas/StylistSearchResponse'
-                        - $ref: '#/components/schemas/StylistAuthenticatedSearchResponse'
+                      $ref: '#/components/schemas/StylistSearchResponse'
         '500':
           description: Internal server error.
           content:
@@ -3990,6 +4028,54 @@ components:
           enum:
             - ios
           example: ios
+    PresignUploadRequest:
+      type: object
+      required:
+        - content_type
+      properties:
+        content_type:
+          type: string
+          description: MIME type of the file to upload (e.g. image/jpeg)
+          example: image/jpeg
+        filename:
+          type: string
+          description: Original filename; used only to derive the object extension
+          example: portfolio.jpg
+        file_size:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Optional file size in bytes; validated against the upload limit when provided
+          example: 524288
+    PresignUploadResponse:
+      type: object
+      required:
+        - upload_url
+        - method
+        - object_key
+        - public_url
+        - expires_at
+      properties:
+        upload_url:
+          type: string
+          format: uri
+          description: Presigned URL the client uploads the file to
+        method:
+          type: string
+          description: HTTP method to use for the upload
+          example: PUT
+        object_key:
+          type: string
+          description: Storage object key for the uploaded file
+          example: portfolio/123e4567-e89b-12d3-a456-426614174000/abc123.jpg
+        public_url:
+          type: string
+          format: uri
+          description: Public URL of the uploaded object; pass this as storage_url when registering a portfolio photo
+        expires_at:
+          type: string
+          format: date-time
+          description: Time at which the presigned URL expires
     ReviewResponse:
       type: object
       required:
@@ -4716,13 +4802,6 @@ components:
           description: List of latest reviews for the stylist.
         location:
           $ref: '#/components/schemas/LocationResponse'
-    StylistAuthenticatedSearchResponse:
-      allOf:
-        - $ref: '#/components/schemas/StylistSearchResponse'
-        - type: object
-          properties:
-            isLiked:
-              type: boolean
     UsernameAvailabilityCheckResponse:
       properties:
         available:
