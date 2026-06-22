@@ -1,13 +1,40 @@
 # Glamer UAT — Findings
 
-Backend/contract issues surfaced by UAT, filed with the **glamer-backend** team.
-Tests for these are marked known-failing (`test.fail`) and linked here, so they
-don't block the gate as noise but flip to a real failure the moment they're fixed.
+Issues surfaced by UAT, filed with the **glamer-backend** team (or **glamer-frontend**
+for web bugs). Tests for these are marked known-failing (`test.fail`) and linked here, so
+they don't block the gate as noise but flip to a real failure the moment they're fixed.
 
 Severities follow [principles.md](./principles.md).
 
 **Status:** ✅ F1, F2, F7 fixed & verified. 🔴 Open: F4 (#366), F5 (#367), F6 (#368),
-F8 (#386), F9 (#387), F10 (#388).
+F8 (#386), F9 (#387), F10 (#388), F11 (frontend — glamer-uat#2).
+
+---
+
+## F11 — Wrong password crashes the sign-in page (white-screen) instead of showing an error
+
+- **Repo:** **glamer-frontend** (web client). **Issue:** https://github.com/rickhlx/glamer-uat/issues/2
+  (tracked in the UAT repo; cross-file to glamer-frontend if desired).
+- **Severity:** P2 (a crash on a core flow with a trivial repro; arguably P1).
+- **Surface:** web C-1 (sign in, unhappy path).
+- **Actual:** signing in with a valid email + wrong password white-screens the page with
+  *"Application error: a client-side exception has occurred."* Console throws
+  `Error: You used a <Description /> component, but it is not inside a relevant parent.`
+- **Root cause (two coupled defects):**
+  1. `components/ui/fieldset.tsx` `ErrorMessage` wraps Headless UI `<Description>`, which
+     must be inside a `<Field>`. In `app/(auth)/signin/_components/signin-form.tsx` the
+     **form-level** error (`{form.errors && <ErrorMessage>…}`) is rendered directly in
+     `<FieldGroup>`, **outside** any `<Field>` → Headless UI throws → React error boundary
+     crashes the whole page. So *any* form-level error crashes sign-in.
+  2. `lib/actions/signin.action.ts` only maps `auth/wrong-password` / `auth/user-not-found`
+     to field errors. Modern Firebase returns **`auth/invalid-credential`** for a wrong
+     password, so it falls through to the generic `formErrors` branch — straight into (1).
+- **Expected:** a clear inline error (e.g. "Incorrect email or password"), no crash, stays
+  on `/signin`.
+- **Fix sketch:** render form-level errors outside the Headless `<Field>` context (a plain
+  element, not `ErrorMessage`/`<Description>`), **and** handle `auth/invalid-credential` in
+  the action.
+- **Test:** `tests/web/auth.spec.ts` C-1 "invalid credentials…", `test.fail` → F11.
 
 ---
 

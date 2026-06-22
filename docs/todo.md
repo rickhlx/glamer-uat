@@ -31,8 +31,8 @@ _Last updated: 2026-06-22._
 | --- | --- | --- |
 | Smoke (auth) | `pnpm smoke` | ✅ green |
 | API contract (A-\*) | `pnpm test:api` | ✅ **15 passed** |
-| Cross (X-\*) | `pnpm test:cross` | 🟡 X-2, X-4 green; **X-1, X-3 blocked on web** |
-| Web (C-\*) | `pnpm test:web` | 🔴 placeholder selectors — not yet wired |
+| Cross (X-\*) | `pnpm test:cross` | 🟡 X-2, X-3, X-4 green; **X-1 web step blocked (glamer-uat#1)** |
+| Web (C-\*) | `pnpm test:web` | 🟡 C-1, C-2 green; C-4 n/a; **C-3/C-6 booking blocked (glamer-uat#1)** |
 | iOS (S-\*) | manual | ⬜ not yet run |
 
 Known-failing findings (F4, F8, F9, F10) are guarded with `test.fail` — they don't block the
@@ -60,12 +60,27 @@ When a fix lands: re-run → the `test.fail` guard flips → remove the marker �
 
 ## Remaining work
 
-### 1. Web client (`tests/web`) — biggest unblock
-- [ ] Replace placeholder selectors with real **glamer-frontend** ones (prefer `getByRole` / `data-testid`).
-- [ ] Confirm the web client's auth matches our cookie assumption.
-- [ ] C-1 sign in, C-2 discover (runnable once selectors land).
-- [ ] C-3 booking, C-4 payment decline, C-6 cancel (need the real booking/payment UI).
-- [ ] Unblocks **X-1** and **X-3** (they drive the client booking step through the web UI).
+### 1. Web client (`tests/web`) — real selectors wired; blocked on Vercel wall
+Selectors are now **real**, read from the live `glamer-frontend` (Next.js App Router)
+source, not placeholders. Routes: sign-in `/signin`, discovery `/search/stylists`,
+profile `/{username}`, booking modal `/{username}?booking=true` (multi-step:
+Services → Date&Time → Summary), appointments `/appointments`. Web auth is Firebase
+email/password; the frontend sets the `glamer-session` cookie itself.
+
+- [x] Replace placeholder selectors with real ones (`support/web.ts` helpers + all C-\* specs).
+- [x] Confirm web auth: sign-in form `input[name=email|password]`, server action sets `glamer-session`.
+- [x] **Vercel deployment protection solved.** Bypass *cookie* minted in `globalSetup` →
+  storageState, loaded only by web/cross (`playwright.config.ts`); secret in
+  `VERCEL_AUTOMATION_BYPASS_SECRET`. (A header would leak to Sentry/Maps and break their CORS.)
+- [x] **C-1 sign in** (valid ✅; invalid guarded → **F11** crash, glamer-uat#2) and
+  **C-2 discover** (search + profile ✅) — green against live staging.
+- [x] **C-4 payment decline — NOT APPLICABLE on web** (request-to-book, "pay at location";
+  no web payment UI). Documented + skipped; payment coverage lives in API A-6.
+- **[ ] C-3 booking + C-6 cancel + X-1 web step — blocked, tracked in glamer-uat#1.**
+  Selectors are real; the booking-modal helper races the modal's server-action step
+  transitions, and the shared server-side cart makes it flaky. C-6's card menu trigger is
+  unlabeled. Needs transition-aware waits + a clean-cart/appointments reset (ties to F10).
+- X-3 is already fully API-driven and green.
 
 ### 2. CI (Step 6)
 - [ ] Add GitHub Actions **secrets**: `API_BASE_URL`, `WEB_BASE_URL`, `FIREBASE_API_KEY`,
