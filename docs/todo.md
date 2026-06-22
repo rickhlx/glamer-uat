@@ -1,81 +1,97 @@
-# Glamer UAT — Remaining Work
+# Glamer UAT — Status & Remaining Work
 
-Status snapshot and outstanding tasks. See [principles.md](./principles.md),
+The canonical status doc. See also [principles.md](./principles.md),
 [critical-journeys.md](./critical-journeys.md), [runbook.md](./runbook.md),
 [findings.md](./findings.md).
 
 _Last updated: 2026-06-22._
 
-## ✅ Done
+---
 
-- Scaffold, toolchain, CI workflow, docs.
-- Wired to the real OpenAPI spec; Firebase → `/session` cookie auth working.
-- `pnpm smoke` green (both roles authenticate).
-- **API suite green — `pnpm test:api`: 15 passed.** Booking uses real
-  service/slot/location discovery with per-test cleanup.
-- Test stylist (`ricardo_stylist`) onboarded via API (profile, service,
-  availability, work location).
-- 6 backend findings filed; F1/F2/F7 fixed & verified.
+## How we got here (recap)
 
-## 🔴 Open backend findings (tracked, not blocking the gate)
+1. **Principles & journeys** — agreed how we test ([principles.md](./principles.md)) and the
+   critical user journeys A-\* (API), C-\* (web), S-\* (iOS), X-\* (cross) ([critical-journeys.md](./critical-journeys.md)).
+2. **Toolchain & scaffold** — TypeScript + Playwright as one runner for API + web; `openapi-typescript`
+   typed client; a `toMatchSpec` matcher (`openapi-response-validator`) for runtime contract checks;
+   GitHub Actions workflow; severity-tagged tests (`@critical`/`@important`).
+3. **Real spec adopted** — replaced the placeholder with the real Glamer Backend API v1.0 and
+   rewired everything to it (`/appointments` lifecycle, `/me/stylist/*`, etc.).
+4. **Auth solved** — Firebase ID token → `POST /session` → `glamer-session` cookie. Found and fixed
+   that the session value comes back in the **response body**, not a `Set-Cookie` header.
+5. **Went live against UAT** — filled `.env`, `pnpm smoke` green for both roles.
+6. **Onboarded the test stylist** via API (profile, service, availability, work location) and pinned
+   down the real booking contract (`locationType: at_stylist` + catalog `location.id`).
+7. **Robust booking** — `bookIntoFreeSlot` (resilient to parallel slot contention) + per-test cleanup.
+8. **Surfaced 10 findings**, filed as glamer-backend issues; 3 fixed & verified.
 
-Each has a `test.fail` guard that flips to a real failure when fixed.
+## Current test status
 
-| ID | Issue | Summary |
+| Suite | Command | Status |
 | --- | --- | --- |
-| F4 | [#366](https://github.com/rickhlx/glamer-backend/issues/366) | Stylist-only endpoints `500` for non-stylists (should be `403`) |
-| F5 | [#367](https://github.com/rickhlx/glamer-backend/issues/367) | `POST /appointments` `500` on missing/invalid location (should be `400`) |
-| F6 | [#368](https://github.com/rickhlx/glamer-backend/issues/368) | `POST /me/register` `500` on duplicate email (should be `409`) |
-| F8 | [#386](https://github.com/rickhlx/glamer-backend/issues/386) | Double-booking `500` (should be `409`) |
-| F9 | [#387](https://github.com/rickhlx/glamer-backend/issues/387) | `services[].includedAddons` is `null` (should be `[]`) |
-| F10 | [#388](https://github.com/rickhlx/glamer-backend/issues/388) | Canceled/declined appointments don't release the slot (availability leak) |
+| Smoke (auth) | `pnpm smoke` | ✅ green |
+| API contract (A-\*) | `pnpm test:api` | ✅ **15 passed** |
+| Cross (X-\*) | `pnpm test:cross` | 🟡 X-2, X-4 green; **X-1, X-3 blocked on web** |
+| Web (C-\*) | `pnpm test:web` | 🔴 placeholder selectors — not yet wired |
+| iOS (S-\*) | manual | ⬜ not yet run |
 
-→ When a fix lands, re-run; the guard alerts; then remove the `test.fail` marker and close the issue.
+Known-failing findings (F4, F8, F9, F10) are guarded with `test.fail` — they don't block the
+gate and auto-alert when the backend fixes them.
 
-## ⏳ Test suites remaining
+## Findings
 
-### Cross-surface (`tests/cross`)
-- [x] **X-2 decline** (pure API) — green; slot-release split out as known-failing → F10.
-- [x] **X-4 availability sync** (pure API) — green (sets full week; verifies real slots).
-- [ ] **X-1 book→confirm** — uses the web UI for the client booking step → blocked on web selectors.
-- [ ] **X-3 client cancel** — uses the web UI → blocked on web selectors.
+✅ Fixed & verified (closed): **F1** (#364), **F2** (#365), **F7** (#369).
+F3 was a test-data mistake (client account), not a backend bug — resolved.
 
-### Web client (`tests/web`)
-- [ ] Replace placeholder selectors with real **glamer-frontend** ones
-  (prefer `getByRole` / `data-testid`).
-- [ ] C-1 sign in, C-2 discover — runnable once selectors land.
-- [ ] C-3 booking, C-4 payment decline, C-6 cancel — need the real booking/payment UI.
-- [ ] Confirm the web client's auth (does it set the `glamer-session` cookie the same way?).
+🔴 Open (tracked, not blocking the gate):
 
-### iOS (manual — `ios-checklists/`)
+| ID | Issue | Sev | Summary |
+| --- | --- | --- | --- |
+| F4 | [#366](https://github.com/rickhlx/glamer-backend/issues/366) | P2 | Stylist-only endpoints `500` for non-stylists (should be `403`) |
+| F5 | [#367](https://github.com/rickhlx/glamer-backend/issues/367) | P3 | `POST /appointments` `500` on missing/invalid location (should be `400`) |
+| F6 | [#368](https://github.com/rickhlx/glamer-backend/issues/368) | P3 | `POST /me/register` `500` on duplicate email (should be `409`) |
+| F8 | [#386](https://github.com/rickhlx/glamer-backend/issues/386) | P3 | Double-booking `500` (should be `409`) |
+| F9 | [#387](https://github.com/rickhlx/glamer-backend/issues/387) | P3 | `services[].includedAddons` is `null` (should be `[]`) |
+| F10 | [#388](https://github.com/rickhlx/glamer-backend/issues/388) | P2 | Canceled/declined appointments don't release the slot (availability leak) |
+
+When a fix lands: re-run → the `test.fail` guard flips → remove the marker → close the issue.
+
+---
+
+## Remaining work
+
+### 1. Web client (`tests/web`) — biggest unblock
+- [ ] Replace placeholder selectors with real **glamer-frontend** ones (prefer `getByRole` / `data-testid`).
+- [ ] Confirm the web client's auth matches our cookie assumption.
+- [ ] C-1 sign in, C-2 discover (runnable once selectors land).
+- [ ] C-3 booking, C-4 payment decline, C-6 cancel (need the real booking/payment UI).
+- [ ] Unblocks **X-1** and **X-3** (they drive the client booking step through the web UI).
+
+### 2. CI (Step 6)
+- [ ] Add GitHub Actions **secrets**: `API_BASE_URL`, `WEB_BASE_URL`, `FIREBASE_API_KEY`,
+  `TEST_CLIENT_EMAIL/PASSWORD`, `TEST_STYLIST_EMAIL/PASSWORD`, `TEST_STYLIST_USERNAME`, seed vars.
+- [ ] Fix `.github/workflows/uat.yml` env block (predates Firebase): add `FIREBASE_API_KEY` +
+  `TEST_STYLIST_USERNAME`, drop obsolete `TEST_CARD_DECLINE`.
+- [ ] Decide CI gate scope (`pnpm test:critical`) and push-vs-nightly for web/cross.
+
+### 3. Seed / reset (Step 4) — now more urgent
+- [ ] Decide the UAT reset mechanism and wire `fixtures/seed.ts`.
+- [ ] **Because of F10, cancellation doesn't free slots**, so each booking-test run permanently
+  consumes ~2 of the stylist's slots. Without a reset (or fixing F10, or periodically refreshing
+  the availability window) the stylist will eventually run out of bookable slots.
+
+### 4. iOS (manual — `ios-checklists/`)
 - [ ] Run a manual pass on a UAT build of the stylist app; record results.
 - [ ] (Later) Maestro automation under `mobile/`.
 
-## ⏳ Infrastructure
+### 5. Housekeeping
+- [ ] Prune `test.fail` markers + this list as F4/F5/F6/F8/F9/F10 close.
+- [ ] Wire in or remove `fixtures/personas.ts` (currently unused).
 
-### Step 4 — Seed / reset
-- [ ] Decide the UAT reset mechanism (endpoint? script? none?) and wire `fixtures/seed.ts`.
-- [ ] **Now more urgent:** because of F10, `cancelAppointment` does NOT free slots, so every
-  booking-test run permanently consumes ~2 slots. Without a reset, the stylist's availability
-  will eventually exhaust. Either fix F10, add a seed/reset, or periodically widen/refresh the
-  stylist's availability window.
-
-### Step 6 — CI
-- [ ] Add GitHub Actions **secrets**: `API_BASE_URL`, `WEB_BASE_URL`, `FIREBASE_API_KEY`,
-  `TEST_CLIENT_EMAIL/PASSWORD`, `TEST_STYLIST_EMAIL/PASSWORD`, `TEST_STYLIST_USERNAME`,
-  and seed vars.
-- [ ] Update `.github/workflows/uat.yml` env block (predates the Firebase change): add
-  `FIREBASE_API_KEY` + `TEST_STYLIST_USERNAME`, drop the obsolete `TEST_CARD_DECLINE`.
-- [ ] Decide gate scope in CI (e.g. `pnpm test:critical`) and whether web/cross run on every
-  push or nightly only.
-
-## 🧹 Housekeeping
-
-- [ ] Consider a dedicated **client-only** vs **stylist** account hygiene check in CI setup docs.
-- [ ] Revisit `personas.ts` (currently unused) — wire it in or remove.
-- [ ] When F4/F5/F6/F8/F9 close, prune `test.fail` markers and this list.
+---
 
 ## Release gate (reminder)
 
-Ship-ready = **`pnpm test:critical` green** + **zero open P1/P2**. Today all open
-findings are P2/P3 and tracked; the one-time P1 (F7) is fixed.
+Ship-ready = **`pnpm test:critical` green** + **zero open P1/P2 bugs**. Today the gate command
+passes (known-failing findings are guarded); the open P2s (F4, F10) are tracked backend bugs to
+resolve before a real go-live sign-off.
