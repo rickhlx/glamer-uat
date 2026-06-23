@@ -3493,6 +3493,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /specialties:
+    get:
+      summary: List specialties
+      description: Returns the specialty catalog (slug + name) for the given stylist type.
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Stylist type slug (e.g. barber, stylist, nail-technician). When authenticated as a stylist, defaults to that stylist's type.
+      responses:
+        '200':
+          description: Specialties retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SpecialtyResponse'
+        '400':
+          description: Missing or invalid type parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /locations:
     post:
       summary: Create a new location
@@ -3699,7 +3737,6 @@ components:
       type: object
       required:
         - displayName
-        - email
         - role
         - timezone
       properties:
@@ -3747,7 +3784,6 @@ components:
           enum:
             - client
             - stylist
-            - admin
     UserNotificationPreferencesResponse:
       type: object
       required:
@@ -4212,7 +4248,7 @@ components:
           type: array
           items:
             type: string
-          description: List of stylist specialties.
+          description: Specialty slugs drawn from GET /specialties for the stylist's type.
         offersTravel:
           type: boolean
           description: When true, the stylist is willing to travel to the client's location.
@@ -4272,7 +4308,7 @@ components:
           type: array
           items:
             type: string
-          description: List of stylist specialties.
+          description: Specialty slugs drawn from GET /specialties for the stylist's type.
         offersTravel:
           type: boolean
           description: When true, the stylist is willing to travel to the client's location. Clients may book an at_client appointment and supply an ad-hoc address.
@@ -4794,7 +4830,7 @@ components:
           type: array
           items:
             type: string
-          description: List of specialties of the stylist.
+          description: Specialty slugs of the stylist, drawn from GET /specialties for the stylist's type.
         reviews:
           type: array
           items:
@@ -5465,6 +5501,18 @@ components:
         name:
           type: string
           description: Human-readable addon name
+    SpecialtyResponse:
+      type: object
+      required:
+        - slug
+        - name
+      properties:
+        slug:
+          type: string
+          description: Specialty identifier slug (e.g. colorist, balayage)
+        name:
+          type: string
+          description: Human-readable specialty name
     LocationRequest:
       type: object
       required:
