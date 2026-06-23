@@ -80,6 +80,10 @@ email/password; the frontend sets the `glamer-session` cookie itself.
   Selectors are real; the booking-modal helper races the modal's server-action step
   transitions, and the shared server-side cart makes it flaky. C-6's card menu trigger is
   unlabeled. Needs transition-aware waits + a clean-cart/appointments reset (ties to F10).
+  **Preferred fix is upstream:** [glamer-frontend#647](https://github.com/rickhlx/glamer-frontend/issues/647)
+  — the modal gates `Next` on a server round-trip (optimistic update misses `canProceedToNext`)
+  and transitions steps via full `redirect()` re-renders with no stable step signal. Once it
+  lands (optimistic Next + `data-booking-step`), re-point the helper at the new affordances.
 - X-3 is already fully API-driven and green.
 
 ### 2. CI (Step 6)
