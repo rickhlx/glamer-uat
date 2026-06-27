@@ -62,6 +62,17 @@ export const env = {
     url: optional('SEED_URL'),
     token: optional('SEED_TOKEN'),
   },
+
+  /**
+   * Guest (account-less) checkout uses an SMS one-time code that we can't
+   * intercept from the test. If UAT exposes a fixed test code (and a phone the
+   * verifier accepts), set them here to run the full guest happy-path E2E;
+   * otherwise that test self-skips and only the unverified-403 guard runs.
+   */
+  guest: {
+    otp: optional('GUEST_TEST_OTP'),
+    phone: optional('GUEST_TEST_PHONE'),
+  },
   isCI: !!process.env.CI,
   /**
    * True while still pointed at the placeholder *.example domains from
