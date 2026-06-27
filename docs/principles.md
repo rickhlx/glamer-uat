@@ -10,8 +10,13 @@ Glamer is a peer-to-peer stylist booking platform with three surfaces:
 | Surface | Audience | What it does |
 | --- | --- | --- |
 | **REST API** | Both | OpenAPI-spec-driven backend. The single source of truth for behavior. |
-| **Web client** | Clients | Easy bookings from a web page. |
+| **Web client** | Clients | Easy bookings from a web page (incl. account-less guest booking). |
 | **iOS app** | Stylists | Business management on the go. |
+
+The client/stylist split is a **product decision, not just a testing convenience**: the web app is
+client-only, and **iOS is the only way a stylist sets up and runs their account** (signup,
+onboarding, profile, availability, subscription). Tests follow that boundary — we don't drive
+stylist setup through the web.
 
 UAT (User Acceptance Testing) here means: **does the system do what a real client and a real stylist need it to do, end to end, before we ship.** It is not unit testing and it is not a substitute for it.
 

@@ -73,9 +73,22 @@ confirmed booking.
 ### C-7 — View booking history & status `[Important]` · Web
 - **Acceptance:** past/upcoming bookings listed with correct, current statuses.
 
+### C-8 — Guest booking (no account) `[Important]` · Web `[deferred — glamer-uat#1]`
+- **Flow:** an account-less visitor verifies a phone over SMS → builds a cart → checks out as a
+  guest → appointment request created.
+- **Acceptance:** only a verified phone can check out; unverified checkout is rejected; the booking
+  shows the same confirmation as C-3. **Web automation is deferred** behind the same booking-modal
+  blocker as C-3 (glamer-uat#1); the API contract for this flow is covered by **A-7**.
+
 ---
 
-## Stylist journeys (iOS — manual checklists)
+## Stylist journeys (iOS only — by product design)
+
+> Stylist account setup (signup, onboarding, profile, services, availability, work history,
+> subscription) lives **only in the iOS app** — there is no stylist web surface. These are
+> covered by **manual checklists** ([../ios-checklists](../ios-checklists)) for now; native UI
+> automation is a later investment. The backend contract behind them is exercised automatically
+> via the API as a stand-in for iOS (see A-3/A-6 and the cross-surface X-2/X-4).
 
 ### S-1 — Stylist onboarding / profile setup `[Critical]` · iOS
 - **Flow:** sign in → create/edit profile, services, prices.
@@ -123,6 +136,15 @@ The API is the foundation; these run on every change and underpin everything abo
 ### A-6 — Payment endpoints `[Critical]` · API `[CONFIRM]` integration model
 - **Acceptance:** charge/hold/capture/refund behave per spec; declines surface correctly; idempotency on retries **[CONFIRM]**.
 
+### A-7 — Guest booking & phone verification `[Critical]` · API
+The contract behind the account-less booking path (client side of C-8).
+- **Flow:** `POST /verify/phone/request` → `POST /verify/phone/confirm` (token) → `POST /carts` +
+  `/carts/{id}/items` → `POST /carts/{id}/checkout` with a `guest` (name + verified phone + token).
+- **Acceptance:** request/confirm validate input and return the spec shapes; **checkout without a
+  valid verification token is rejected with `403`**; a verified guest checkout creates an
+  appointment (`CartCheckoutResponse`). The SMS happy path runs only when a UAT test code is
+  configured (`GUEST_TEST_OTP`); the 403 guard runs unconditionally.
+
 ---
 
 ## Coverage map (journey → surfaces)
@@ -135,8 +157,11 @@ The API is the foundation; these run on every change and underpin everything abo
 | X-4 Availability sync | ● | ● | ● |
 | X-5 Complete→settle | ● | ● | ● |
 | C-1..C-7 Client | ● | ● | |
+| C-8 Guest booking | ● | ○ | |
 | S-1..S-7 Stylist | ● | | ● |
-| A-1..A-6 Contract | ● | | |
+| A-1..A-7 Contract | ● | | |
+
+> ○ = client surface exists but web automation is deferred (glamer-uat#1); A-7 covers the API side.
 
 ---
 
