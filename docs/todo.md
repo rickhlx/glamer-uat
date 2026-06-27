@@ -2,9 +2,45 @@
 
 The canonical status doc. See also [principles.md](./principles.md),
 [critical-journeys.md](./critical-journeys.md), [runbook.md](./runbook.md),
-[findings.md](./findings.md).
+[findings.md](./findings.md), and [next-steps.md](./next-steps.md) (the plan to reach a real
+ship/no-ship signal).
 
-_Last updated: 2026-06-22._
+_Last updated: 2026-06-25._
+
+---
+
+## Spec update — 2026-06-25 (stylist → iOS-only, web = client-only)
+
+The backend spec landed a product split: **all stylist functionality is iOS-only**; the Next.js
+web app is **client-facing only**. The suite already honored this (web = C-\*, iOS = S-\* manual,
+stylist actions driven via the API as an iOS stand-in), so this was an additive change, not a
+teardown. Done this round:
+
+- **Regenerated** `spec/glamer.d.ts` from the updated yaml (`pnpm gen:types`).
+- **New journey A-7 — guest booking & phone verification** (`tests/api/guest-booking.spec.ts` +
+  `support/guest.ts`): phone request/confirm shapes, the **unverified-checkout → 403** guard (runs
+  every time), and a full SMS happy path gated behind `GUEST_TEST_OTP` (self-skips when unset).
+- **Extended A-5** conformance for the enriched public profile (`workLocations[]`) and guest cart
+  create/read.
+- **Docs** reframed: client/stylist split is now stated as product design; A-7 + C-8 registered.
+- **Kept** the stylist-API-driven tests (A-3/A-6/X-2/X-4) as the automated proxy for the iOS
+  backend contract; the test stylist stays onboardable via API for setup.
+- The `POST/PUT /me/stylist/services` → **204** change is a no-op for the suite (only `GET` is
+  used). iOS-only additions (subscription, work-history, RevenueCat webhook) are left to the S-\*
+  manual checklists — no automated tests added.
+
+**Found:** **F12** — the guest phone-verification endpoints `500` because the `phone_verifications`
+table is missing in UAT (migration not applied); the whole guest flow is down until it's deployed.
+The unverified-checkout `403` guard and malformed-phone `400` validation pass correctly.
+
+**Filed for backend:** [#428](https://github.com/rickhlx/glamer-backend/issues/428) (F12 missing
+table), [#429](https://github.com/rickhlx/glamer-backend/issues/429) (F13 `contact.Social`), and
+[#430](https://github.com/rickhlx/glamer-backend/issues/430) (UAT test-OTP mechanism to enable the
+A-7 guest E2E).
+
+**Still open:** backend to apply the F12 migration on UAT (#428); then wire a UAT test-OTP
+(`GUEST_TEST_OTP`, #430) to unlock the full guest E2E; web guest booking (C-8) remains behind the
+glamer-uat#1 modal blocker.
 
 ---
 
@@ -30,7 +66,7 @@ _Last updated: 2026-06-22._
 | Suite | Command | Status |
 | --- | --- | --- |
 | Smoke (auth) | `pnpm smoke` | ✅ green |
-| API contract (A-\*) | `pnpm test:api` | ✅ **15 passed** |
+| API contract (A-\*) | `pnpm test:api` | ✅ **15 passed**; **A-7 guest booking added** (verify next live run) |
 | Cross (X-\*) | `pnpm test:cross` | 🟡 X-2, X-3, X-4 green; **X-1 web step blocked (glamer-uat#1)** |
 | Web (C-\*) | `pnpm test:web` | 🟡 C-1, C-2 green; C-4 n/a; **C-3/C-6 booking blocked (glamer-uat#1)** |
 | iOS (S-\*) | manual | ⬜ not yet run |
@@ -53,6 +89,8 @@ F3 was a test-data mistake (client account), not a backend bug — resolved.
 | F8 | [#386](https://github.com/rickhlx/glamer-backend/issues/386) | P3 | Double-booking `500` (should be `409`) |
 | F9 | [#387](https://github.com/rickhlx/glamer-backend/issues/387) | P3 | `services[].includedAddons` is `null` (should be `[]`) |
 | F10 | [#388](https://github.com/rickhlx/glamer-backend/issues/388) | P2 | Canceled/declined appointments don't release the slot (availability leak) |
+| F12 | [#428](https://github.com/rickhlx/glamer-backend/issues/428) | P1 | Guest phone-verification `500`s — `phone_verifications` table missing in UAT (blocks A-7; likely a migration/deploy gap) |
+| F13 | [#429](https://github.com/rickhlx/glamer-backend/issues/429) | P3 | `GET /stylists/{username}` `contact.Social` is `null`, should be `[]` (oneOf fails; same class as F9) |
 
 When a fix lands: re-run → the `test.fail` guard flips → remove the marker → close the issue.
 

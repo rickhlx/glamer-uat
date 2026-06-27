@@ -7,7 +7,49 @@ they don't block the gate as noise but flip to a real failure the moment they're
 Severities follow [principles.md](./principles.md).
 
 **Status:** ✅ F1, F2, F7 fixed & verified. 🔴 Open: F4 (#366), F5 (#367), F6 (#368),
-F8 (#386), F9 (#387), F10 (#388), F11 (frontend — glamer-uat#2).
+F8 (#386), F9 (#387), F10 (#388), F11 (frontend — glamer-uat#2), **F12 (guest phone
+verification — missing table in UAT)**, **F13 (`contact.Social` null, not array)**.
+
+---
+
+## F13 — `GET /stylists/{username}` returns `contact.Social: null`, should be array
+
+- **Repo:** **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/429 — **open**. Same class as F9.
+- **Severity:** P3 (minor) — contract conformance gap on the public profile endpoint.
+- **Surface:** API A-5; the profile read backing web C-2 / the new workLocations enrichment.
+- **Actual:** the response includes `"contact": { "Social": null, ... }`; the spec declares
+  `Social` as an array, so the body fails its `oneOf` (`contact/Social: must be array`).
+- **Expected:** `[]` when there are no socials (or make the field nullable in the spec).
+- **Note:** the new `workLocations[]` field conforms correctly — only `contact.Social` breaks
+  conformance, and it predates this spec change.
+- **Test:** `tests/api/schema-conformance.spec.ts` (A-5 "the full public profile conforms"),
+  `test.fail` → F13.
+
+---
+
+## F12 — Guest phone-verification endpoints `500`: `phone_verifications` table missing in UAT
+
+- **Repo:** **glamer-backend** (likely a UAT deploy/migration gap, not app code).
+  **Issue:** https://github.com/rickhlx/glamer-backend/issues/428 — **open**.
+  Test-enablement follow-up (UAT test OTP): https://github.com/rickhlx/glamer-backend/issues/430.
+- **Severity:** **P1 for journey A-7** — the entire account-less guest booking flow is
+  non-functional in UAT (no phone can be verified, so no guest can check out).
+- **Surface:** API A-7 (and blocks web C-8). **Endpoints:** `POST /verify/phone/request`,
+  `POST /verify/phone/confirm`.
+- **Actual:** both return `500`:
+  ```json
+  { "type": "server_error", "title": "Internal Server Error",
+    "detail": "ERROR: relation \"phone_verifications\" does not exist (SQLSTATE 42P01)" }
+  ```
+- **Expected:** `request` → `202` (accepted) / `400` / `429`; `confirm` → `200` with a
+  `verificationToken`, or `400` for an invalid/expired code.
+- **Root cause:** the `phone_verifications` relation doesn't exist in the UAT database — the
+  feature's schema migration hasn't been applied (or the deploy predates it). Validation that
+  runs *before* the DB lookup is fine: malformed phone → `400`, and guest checkout with a bogus
+  token → `403` (both pass), so only the two paths that hit the table 500.
+- **Action:** apply the phone-verification migration / redeploy UAT, then the A-7 happy path and
+  C-8 can be exercised (also set `GUEST_TEST_OTP` for the full SMS E2E).
+- **Test:** `tests/api/guest-booking.spec.ts` (A-7 request + confirm), `test.fail` → F12.
 
 ---
 
