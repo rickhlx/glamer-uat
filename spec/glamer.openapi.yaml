@@ -73,6 +73,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /verify/phone/request:
+    post:
+      operationId: postVerifyPhoneRequest
+      summary: Request a phone verification code
+      description: |
+        Sends an SMS one-time code to the supplied phone number so an account-less
+        guest can verify it before booking. Public endpoint; heavily rate-limited.
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneVerificationRequest'
+      responses:
+        '202':
+          description: Verification code accepted for delivery.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests (resend cooldown or rate limit).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /verify/phone/confirm:
+    post:
+      operationId: postVerifyPhoneConfirm
+      summary: Confirm a phone verification code
+      description: |
+        Verifies the SMS one-time code and returns a short-lived token proving the
+        phone was verified. Pass the token to cart checkout. Public; rate-limited.
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneVerificationConfirmRequest'
+      responses:
+        '200':
+          description: Phone verified successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneVerificationTokenResponse'
+        '400':
+          description: Invalid or expired code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /me/:
     put:
       summary: Update user profile
@@ -667,6 +743,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /me/subscription:
+    get:
+      operationId: getMeSubscription
+      summary: Get the current stylist's subscription
+      description: |
+        Returns the authenticated stylist's subscription and derived entitlement,
+        lazily creating a free trial on first read. Stylist-only.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The stylist's subscription.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The authenticated user is not a stylist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /webhooks/revenuecat:
+    post:
+      operationId: postWebhooksRevenuecat
+      summary: RevenueCat subscription webhook
+      description: |
+        Receives RevenueCat subscription lifecycle events and reconciles the
+        stylist's subscription. Public to Firebase auth; authenticity is verified
+        inside the handler against a shared secret in the Authorization header.
+        Processing is idempotent.
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevenueCatWebhookEvent'
+      responses:
+        '200':
+          description: Event accepted (and processed idempotently).
+        '401':
+          description: Missing or invalid webhook authorization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /me/stylist/profile:
     put:
       summary: Update stylist profile
@@ -766,12 +908,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ServiceRequest'
       responses:
-        '201':
+        '204':
           description: Service added successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServiceResponse'
         '400':
           description: Bad request.
           content:
@@ -847,12 +985,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ServiceRequest'
       responses:
-        '200':
+        '204':
           description: Service updated successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServiceResponse'
         '400':
           description: Bad request.
           content:
@@ -1214,6 +1348,150 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Work location not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/work-history:
+    get:
+      tags:
+        - self
+      summary: Get work history
+      description: Retrieves the stylist's free-text career work history.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Work history retrieved successfully.
+          content:
+            application/json:
+              schema:
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/MetaResponse'
+                  links:
+                    $ref: '#/components/schemas/LinksResponse'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StylistWorkHistoryResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - self
+      summary: Add a work history entry
+      description: Adds a new free-text work history entry for the stylist.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylistWorkHistoryRequest'
+      responses:
+        '201':
+          description: Work history entry added successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylistWorkHistoryResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/stylist/work-history/{id}:
+    put:
+      tags:
+        - self
+      summary: Update a work history entry
+      description: Updates a work history entry by its ID.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the work history entry to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylistWorkHistoryRequest'
+      responses:
+        '200':
+          description: Work history entry updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StylistWorkHistoryResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Work history entry not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - self
+      summary: Remove a work history entry
+      description: Removes a work history entry by its ID.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the work history entry to remove.
+      responses:
+        '204':
+          description: Work history entry removed successfully.
+        '404':
+          description: Work history entry not found.
           content:
             application/json:
               schema:
@@ -3366,6 +3644,7 @@ paths:
       description: Converts cart items to actual appointments and processes payment.
       security:
         - cookieAuth: []
+        - {}
       parameters:
         - name: id
           in: path
@@ -3393,8 +3672,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized - guest carts cannot be checked out.
+        '403':
+          description: Phone not verified for this checkout (token invalid or expired).
           content:
             application/json:
               schema:
@@ -3733,6 +4012,41 @@ components:
           type: string
           description: Error message.
           example: bad request
+    PhoneVerificationRequest:
+      type: object
+      required:
+        - phone
+      properties:
+        phone:
+          type: string
+          description: Phone number to verify, in E.164 format (e.g. "+14155552671").
+        cartId:
+          type: string
+          format: uuid
+          description: Optional cart UUID this verification is associated with (the same value used as {id} in POST /carts/{id}/checkout, not the session id).
+    PhoneVerificationConfirmRequest:
+      type: object
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+          description: Phone number being verified, in E.164 format.
+        code:
+          type: string
+          pattern: ^\d{6}$
+          minLength: 6
+          maxLength: 6
+          description: Six-digit one-time code delivered via SMS.
+    PhoneVerificationTokenResponse:
+      type: object
+      required:
+        - verificationToken
+      properties:
+        verificationToken:
+          type: string
+          description: Short-lived token proving the phone was verified. Pass to checkout.
     UserResponse:
       type: object
       required:
@@ -3784,6 +4098,11 @@ components:
           enum:
             - client
             - stylist
+        phoneNumber:
+          type: string
+          description: Optional phone number in E.164 format. When provided, it is saved to the user's account as part of the registration transaction (same effect as POST /me/settings/phone-number).
+          pattern: ^\+[1-9]\d{1,14}$
+          example: '+14155552671'
     UserNotificationPreferencesResponse:
       type: object
       required:
@@ -4175,6 +4494,58 @@ components:
           type: string
           description: URL of the author's avatar image.
           format: uri
+    SubscriptionResponse:
+      type: object
+      description: A stylist's current subscription state and derived entitlement.
+      required:
+        - status
+        - active
+        - inTrial
+        - cancelAtPeriodEnd
+        - provider
+      properties:
+        status:
+          type: string
+          enum:
+            - trialing
+            - active
+            - past_due
+            - canceled
+            - expired
+          x-enum-varnames:
+            - SubStatusTrialing
+            - SubStatusActive
+            - SubStatusPastDue
+            - SubStatusCanceled
+            - SubStatusExpired
+          description: Lifecycle state of the subscription.
+        active:
+          type: boolean
+          description: Whether the stylist may currently use paid features.
+        inTrial:
+          type: boolean
+          description: Whether the subscription is a live (not-yet-ended) free trial.
+        trialEndsAt:
+          type: string
+          format: date-time
+          description: When the free trial ends (if applicable).
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          description: When the current paid period ends (if applicable).
+        cancelAtPeriodEnd:
+          type: boolean
+          description: Whether the subscription is set to not renew at period end.
+        provider:
+          type: string
+          description: Billing provider ("revenuecat" or "manual").
+        store:
+          type: string
+          description: Store the purchase was made in ("app_store" or "play_store").
+    RevenueCatWebhookEvent:
+      type: object
+      description: RevenueCat webhook envelope. Parsed loosely; the backend reads the nested event fields it needs and stores the full payload for audit.
+      additionalProperties: true
     OnboardingSteps:
       type: object
       description: Derived per-step readiness of the stylist's onboarding. Each flag is recomputed from current profile state on every request; clients can use it to resume a half-finished onboarding flow at the right step. Distinct from onboardingCompleted, which is the persisted completion flag.
@@ -4627,22 +4998,51 @@ components:
           type: string
           description: IANA timezone identifier for this location.
           example: America/New_York
+    ServiceArea:
+      type: object
+      description: Geographic service area for a mobile stylist (base point plus travel radius).
+      required:
+        - latitude
+        - longitude
+        - radiusKm
+      properties:
+        latitude:
+          type: number
+          format: double
+          description: Latitude of the service-area base point.
+        longitude:
+          type: number
+          format: double
+          description: Longitude of the service-area base point.
+        radiusKm:
+          type: integer
+          minimum: 1
+          description: Travel radius in kilometers from the base point.
+        label:
+          type: string
+          description: Human-friendly description of the service area (e.g. "Brooklyn, NYC").
     StylistWorkLocationResponse:
       type: object
       required:
         - id
         - startDate
         - isCurrent
-        - location
+        - serviceMode
       properties:
         id:
           type: string
           format: uuid
           description: Unique identifier for the work location.
+        serviceMode:
+          type: string
+          enum:
+            - fixed
+            - mobile
+          description: Whether this is a fixed salon or a mobile service area.
         locationId:
           type: string
           format: uuid
-          description: Unique identifier for the location.
+          description: Location identifier for a fixed work location.
         startDate:
           type: string
           format: date
@@ -4653,27 +5053,89 @@ components:
           description: End date of the work location.
         isCurrent:
           type: boolean
-          description: Whether this is the current work location.
+          description: Whether this is a current work location.
         location:
           $ref: '#/components/schemas/LocationResponse'
+        serviceArea:
+          $ref: '#/components/schemas/ServiceArea'
     StylistWorkLocationRequest:
       type: object
       required:
-        - locationId
-        - startDate
+        - serviceMode
       properties:
+        serviceMode:
+          type: string
+          enum:
+            - fixed
+            - mobile
+          description: Whether the stylist works from a fixed salon address (fixed) or travels to clients within a service area (mobile).
         locationId:
           type: string
           format: uuid
-          description: Unique identifier for the location.
+          description: Location of a fixed work location. Required when serviceMode is fixed.
+        serviceArea:
+          $ref: '#/components/schemas/ServiceArea'
         startDate:
           type: string
           format: date
-          description: Start date of the work location.
+          description: Date the stylist started working here. Defaults to today when omitted.
+    StylistWorkHistoryResponse:
+      type: object
+      required:
+        - id
+        - businessName
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the work history entry.
+        businessName:
+          type: string
+          description: Free-text name of the salon or business.
+        city:
+          type: string
+          description: Free-text city or region.
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+        startDate:
+          type: string
+          format: date
+          description: Date the stylist started working here.
         endDate:
           type: string
           format: date
-          description: End date of the work location.
+          description: Date the stylist stopped working here.
+        locationId:
+          type: string
+          format: uuid
+          description: Optional link to a known location record.
+    StylistWorkHistoryRequest:
+      type: object
+      required:
+        - businessName
+      properties:
+        businessName:
+          type: string
+          description: Free-text name of the salon or business.
+        city:
+          type: string
+          description: Free-text city or region.
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+        startDate:
+          type: string
+          format: date
+          description: Date the stylist started working here.
+        endDate:
+          type: string
+          format: date
+          description: Date the stylist stopped working here.
+        locationId:
+          type: string
+          format: uuid
+          description: Optional link to a known location record.
     PortfolioPhotoResponse:
       type: object
       required:
@@ -4838,6 +5300,9 @@ components:
           description: List of latest reviews for the stylist.
         location:
           $ref: '#/components/schemas/LocationResponse'
+        offersTravel:
+          type: boolean
+          description: When true, the stylist is willing to travel to the client's location.
     UsernameAvailabilityCheckResponse:
       properties:
         available:
@@ -4885,6 +5350,33 @@ components:
           items:
             $ref: '#/components/schemas/SocialMediaLink'
           description: List of social media links for the contact.
+    PublicWorkLocationResponse:
+      type: object
+      description: A stylist's current work location as exposed on the public profile. Lean view used by the booking flow to render a location selector.
+      required:
+        - id
+        - serviceMode
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the work location entry.
+        serviceMode:
+          type: string
+          enum:
+            - fixed
+            - mobile
+          description: Whether this is a fixed salon or a mobile service area.
+        locationId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Fixed-location identifier. Pass this value as `locationId` to POST /carts to book against this location. Absent for mobile service areas (which are not bookable via locationId).
+        label:
+          type: string
+          description: 'Display name for the location: the salon name for fixed locations, or the service-area label for mobile.'
+        serviceArea:
+          $ref: '#/components/schemas/ServiceArea'
     StylistPublicResponse:
       allOf:
         - $ref: '#/components/schemas/StylistSearchResponse'
@@ -4901,6 +5393,11 @@ components:
                 $ref: '#/components/schemas/ServiceResponse'
             contact:
               $ref: '#/components/schemas/Contact'
+            workLocations:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicWorkLocationResponse'
+              description: The stylist's current work locations. Used by the booking flow to render a location selector when the stylist has more than one.
     StylistAuthenticatedResponse:
       allOf:
         - $ref: '#/components/schemas/StylistPublicResponse'
@@ -5370,6 +5867,10 @@ components:
           description: Username of the stylist providing service
         locationType:
           $ref: '#/components/schemas/ServiceLocationType'
+        locationId:
+          type: string
+          format: uuid
+          description: Work location to book against for at_stylist carts. Required when the stylist has more than one current work location; optional otherwise.
         travelAddress:
           type: object
           description: Client-supplied address for at_client carts. Required when locationType is at_client.
@@ -5429,6 +5930,26 @@ components:
           description: ID of the service being added to cart.
     CartItemUpdateRequest:
       type: object
+    GuestCheckout:
+      type: object
+      description: |
+        Account-less guest checkout details. Provide when checking out a guest
+        cart: the contact name + SMS-verified phone and the verification token
+        returned by POST /verify/phone/confirm.
+      required:
+        - name
+        - phone
+        - verificationToken
+      properties:
+        name:
+          type: string
+          description: Guest's display name.
+        phone:
+          type: string
+          description: Guest's verified phone in E.164 format (must match the token).
+        verificationToken:
+          type: string
+          description: Token from POST /verify/phone/confirm.
     CartCheckoutRequest:
       type: object
       properties:
@@ -5438,6 +5959,8 @@ components:
         notes:
           type: string
           description: Additional notes for the checkout.
+        guest:
+          $ref: '#/components/schemas/GuestCheckout'
     CartCheckoutResponse:
       type: object
       required:
@@ -5551,6 +6074,24 @@ components:
           type: string
           format: email
           description: Email address of the location.
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Client-supplied latitude. When present (with longitude), the server stores these coordinates directly and does NOT geocode the address. When absent, the server geocodes from the structured address as today.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Client-supplied longitude. See latitude.
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          pattern: ^[A-Za-z]{2}$
+          description: ISO 3166-1 alpha-2 country code (e.g. "US"). Optional.
     StylistTypeResponse:
       type: object
       required:
