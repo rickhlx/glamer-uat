@@ -33,9 +33,6 @@ test.describe('X-2 stylist declines', () => {
     serviceId,
     stylistLocationId,
   }) => {
-    // Known-failing: canceled/declined appointments don't free the slot.
-    // See docs/findings.md#f10 (glamer-backend#388).
-    test.fail();
     const booking = await bookIntoFreeSlot(clientApi, api, {
       username: env.stylist.username,
       serviceId,

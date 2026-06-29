@@ -20,13 +20,15 @@ import {
 // delivering a real SMS. Overridable for a UAT test number that accepts a code.
 const GUEST_PHONE = env.guest.phone || '+14155550123';
 
+// A reserved phone we never request a code for, so confirm always 400s
+// (invalid/expired). Must NOT be the configured GUEST_TEST_PHONE — that phone
+// accepts the fixed test OTP, so a "wrong code" there would actually verify.
+const UNVERIFIED_PHONE = '+14155550199';
+
 test.describe('A-7 guest booking & phone verification', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
   test('A-7 a phone verification request is accepted @critical', async ({ api }) => {
-    // F12 — the `phone_verifications` table is missing in UAT, so this 500s
-    // (should be 202 accepted, or 400/429). Guarded until the migration lands.
-    test.fail();
     const status = await requestPhoneVerification(api, GUEST_PHONE);
     expect([202, 400, 429]).toContain(status);
   });
@@ -50,11 +52,10 @@ test.describe('A-7 guest booking & phone verification', () => {
   test('A-7 confirming an invalid code returns the spec error shape @critical', async ({
     api,
   }) => {
-    // F12 — same missing `phone_verifications` table: confirm 500s instead of
-    // the documented 400 (invalid/expired code). Guarded until the migration lands.
-    test.fail();
+    // Use a phone with no pending verification (not the test phone, which would
+    // accept the fixed OTP) so confirm always returns 400 invalid/expired.
     const { error, response } = await api.POST('/verify/phone/confirm', {
-      body: { phone: GUEST_PHONE, code: '000000' },
+      body: { phone: UNVERIFIED_PHONE, code: '000000' },
     });
     expect([400, 429]).toContain(response.status);
     if (response.status === 400) {
@@ -89,14 +90,17 @@ test.describe('A-7 guest booking & phone verification', () => {
     });
   });
 
-  test('A-7 a verified guest can book end-to-end @critical', async ({ api, serviceId }) => {
+  test('A-7 a verified guest can book end-to-end @critical', async ({
+    api,
+    stylistApi,
+    serviceId,
+  }) => {
     test.skip(
       !env.guest.otp,
       'Set GUEST_TEST_OTP (+ GUEST_TEST_PHONE) to run the full guest happy path.',
     );
-    // NOTE: like the web booking helper, this creates a real appointment and
-    // (until F10) permanently consumes a stylist slot — only runs when the UAT
-    // test OTP is configured.
+    // Creates a real appointment; the stylist declines it afterwards to free the
+    // slot (F10 resolved). Only runs when the UAT test OTP is configured.
     const phone = env.guest.phone || GUEST_PHONE;
     const cart = await createGuestCart(api, {
       username: env.stylist.username,
@@ -109,12 +113,24 @@ test.describe('A-7 guest booking & phone verification', () => {
       phone,
       verificationToken: token,
     });
-    expect(response.status).toBe(200);
-    expect(data).toMatchSpec({
-      path: '/carts/{id}/checkout',
-      method: 'post',
-      status: 200,
-    });
-    expect(data?.appointmentId).toBeTruthy();
+    try {
+      expect(response.status).toBe(200);
+      expect(data).toMatchSpec({
+        path: '/carts/{id}/checkout',
+        method: 'post',
+        status: 200,
+      });
+      expect(data?.appointmentId).toBeTruthy();
+    } finally {
+      // Cleanup: stylist declines the guest appointment so the slot is released.
+      if (data?.appointmentId) {
+        await stylistApi
+          .POST('/appointments/{id}/decline', {
+            params: { path: { id: data.appointmentId } },
+            body: { reason: 'UAT cleanup' },
+          })
+          .catch(() => {});
+      }
+    }
   });
 });

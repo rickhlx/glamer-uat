@@ -19,9 +19,6 @@ test.describe('A-5 schema conformance', () => {
     serviceId,
     stylistLocationId,
   }) => {
-    // Known-failing: services[].includedAddons returns null, spec says array.
-    // See docs/findings.md#f9 (glamer-backend#387).
-    test.fail();
     const booking = await bookIntoFreeSlot(clientApi, api, {
       username: env.stylist.username,
       serviceId,
@@ -36,6 +33,16 @@ test.describe('A-5 schema conformance', () => {
     } finally {
       await cancelAppointment(clientApi, booking.id);
     }
+  });
+
+  test('A-5 /me/appointments returns an empty array for a user with no appointments @important', async ({
+    stylistApi,
+  }) => {
+    // F15 (glamer-backend#438) — fixed 2026-06-28: the empty result now returns
+    // 200 with `data: []` (was `null`). Status was already correct for our accounts.
+    const { data, response } = await stylistApi.GET('/me/appointments');
+    expect(response.status).toBe(200);
+    expect(Array.isArray(data?.data), 'data must be an array, not null').toBe(true);
   });
 
   test('A-5 a missing stylist returns the spec error shape @important', async ({ api }) => {
@@ -64,9 +71,11 @@ test.describe('A-5 schema conformance', () => {
   });
 
   test('A-5 the full public profile conforms to spec @important', async ({ api }) => {
-    // F13: contact.Social comes back null where the spec declares an array, so the
-    // response fails the oneOf (same class as F9). Guarded until the backend returns
-    // [] (or the spec relaxes the field). workLocations[] itself conforms — see above.
+    // F13 (contact.Social null→[]) is fixed. The response still fails the 200
+    // `oneOf: [StylistPublicResponse, StylistAuthenticatedResponse]` with "must match
+    // exactly one schema in oneOf" — the two variants overlap (no discriminator), so
+    // a public response matches both/neither. Spec-side fix (discriminator, or a
+    // single response schema). See docs/findings.md#f16. workLocations[] conforms (above).
     test.fail();
     const { data, response } = await api.GET('/stylists/{username}', {
       params: { path: { username: env.stylist.username } },

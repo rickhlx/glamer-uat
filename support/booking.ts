@@ -7,7 +7,7 @@ export interface BookingInputs {
 }
 
 /** All available slot start-times for a stylist over the next `days`. */
-async function availableSlotStarts(
+export async function availableSlotStarts(
   api: GlamerClient,
   username: string,
   days = 28,

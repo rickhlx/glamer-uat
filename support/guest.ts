@@ -1,4 +1,5 @@
 import type { GlamerClient } from './api-client.js';
+import { availableSlotStarts } from './booking.js';
 
 /**
  * Helpers for the account-less *guest* booking flow (journey A-7):
@@ -25,9 +26,16 @@ export interface GuestCart {
   cartId: string;
   /** Guest session id; pass as `session_id` to read/mutate the cart unauthenticated. */
   sessionId: string;
+  /** The free slot the cart's preferredStartTime was set to (needed for checkout). */
+  startTime: string;
 }
 
-/** Create a guest cart for a stylist and add one service to it. */
+/**
+ * Create a guest cart for a stylist, add one service, and set the cart's
+ * preferred start time to a free slot. Checkout requires a preferred start time
+ * (the backend 500s "cart must have a preferred start time" otherwise), so this
+ * mirrors the authenticated path where `startTime` is part of POST /appointments.
+ */
 export async function createGuestCart(
   api: GlamerClient,
   inputs: GuestCartInputs,
@@ -56,7 +64,21 @@ export async function createGuestCart(
     throw new Error(`POST /carts/{id}/items failed (HTTP ${item.response.status}).`);
   }
 
-  return { cartId, sessionId };
+  // Pick the first free slot and set it as the cart's preferred start time.
+  const slots = await availableSlotStarts(api, inputs.username);
+  const startTime = slots[0];
+  if (!startTime) {
+    throw new Error(`No available slot for ${inputs.username} to set on the guest cart.`);
+  }
+  const pref = await api.PUT('/carts/{id}', {
+    params: { path: { id: cartId }, query: { session_id: sessionId } },
+    body: { preferredStartTime: startTime },
+  });
+  if (pref.response.status !== 200) {
+    throw new Error(`PUT /carts/{id} (preferredStartTime) failed (HTTP ${pref.response.status}).`);
+  }
+
+  return { cartId, sessionId, startTime };
 }
 
 /** Request an SMS one-time code for a guest phone (202 Accepted, no body). */

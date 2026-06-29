@@ -39,9 +39,9 @@ test.describe('A-4 availability', () => {
         locationId: inputs.locationId,
       },
     });
-    // The key guarantee: the second booking does NOT succeed.
-    expect(second.response.status).not.toBe(201);
-    // [F8] currently 500 (DB exclusion constraint); should be a clean 409.
+    // The second booking must be rejected with a clean 409 Conflict (F8 fixed
+    // 2026-06-28 — was a 500 from the DB exclusion constraint).
+    expect(second.response.status).toBe(409);
 
     await cancelAppointment(clientApi, booking.id);
   });

@@ -26,7 +26,8 @@ test.describe('X-3 client cancels booking', () => {
     const cancelled = await clientApi.DELETE('/appointments/{id}', {
       params: { path: { id } },
     });
-    expect(cancelled.response.status).toBe(200);
+    // Spec: DELETE /appointments/{id} → 204 No Content.
+    expect(cancelled.response.status).toBe(204);
 
     // Stylist sees the cancellation (iOS side via API).
     const seen = await stylistApi.GET('/appointments/{id}', {

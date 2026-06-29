@@ -1,9 +1,28 @@
 import { test, expect, env } from '../../support/fixtures.js';
-import { bookIntoFreeSlot, cancelAppointment } from '../../support/booking.js';
+import { availableSlotStarts, bookIntoFreeSlot, cancelAppointment } from '../../support/booking.js';
 
 // A-3 — Booking lifecycle: the state machine must enforce valid transitions.
 test.describe('A-3 appointment lifecycle', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
+
+  test('A-3 booking with an invalid location is rejected with 400 @important', async ({
+    clientApi,
+    serviceId,
+  }) => {
+    // F5 fixed 2026-06-28 — a missing/invalid location now returns 400, not 500.
+    const [startTime] = await availableSlotStarts(clientApi, env.stylist.username);
+    if (!startTime) throw new Error(`No slot for ${env.stylist.username} to probe F5.`);
+    const { response } = await clientApi.POST('/appointments', {
+      body: {
+        username: env.stylist.username,
+        services: [{ id: serviceId }],
+        startTime,
+        locationType: 'at_stylist',
+        locationId: '00000000-0000-0000-0000-000000000000',
+      },
+    });
+    expect(response.status).toBe(400);
+  });
 
   test('A-3 book → stylist confirm moves an appointment to confirmed @critical', async ({
     clientApi,
