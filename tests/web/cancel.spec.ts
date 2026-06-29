@@ -8,8 +8,8 @@ test.describe('C-6 cancel a booking', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
   // Blocked: the appointment card's dropdown trigger (ellipsis) has no accessible
   // name, so the menu can't be opened by role/name. Needs a selector strategy
-  // (and the unlabeled button is a minor a11y issue). Tracked in glamer-uat#1.
-  test.skip(true, 'Appointment-card menu trigger is unlabeled — see glamer-uat#1.');
+  // (and the unlabeled button is a minor a11y issue). Tracked in glamer-uat#9.
+  test.skip(true, 'Appointment-card menu trigger is unlabeled — see glamer-uat#9.');
 
   test('C-6 client cancels an upcoming booking from the web @critical', async ({
     page,

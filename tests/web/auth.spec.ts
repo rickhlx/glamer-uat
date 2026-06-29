@@ -2,7 +2,7 @@ import { test, expect, env } from '../../support/fixtures.js';
 
 // C-1 — Sign in (web client). Real glamer-frontend selectors: the sign-in form
 // posts name="email"/name="password" to a Firebase-backed server action that
-// sets the httpOnly `glamer-session` cookie and redirects to /search/stylists.
+// sets the httpOnly `glamer-session` cookie and redirects to /appointments.
 test.describe('C-1 client sign in', () => {
   test.skip(env.isPlaceholder, 'No live UAT target configured yet.');
 
@@ -12,11 +12,11 @@ test.describe('C-1 client sign in', () => {
     await page.locator('input[name="password"]').fill(env.client.password);
     await page.getByRole('button', { name: 'Sign In', exact: true }).click();
 
-    // Redirects off /signin to the authenticated discovery page.
+    // Redirects off /signin to the authenticated appointments page.
     await page.waitForURL((url) => !url.pathname.startsWith('/signin'), {
       timeout: 15_000,
     });
-    await expect(page).toHaveURL(/\/search\/stylists/);
+    await expect(page).toHaveURL(/\/appointments/);
     // The frontend set the session cookie itself (token comes back in the body).
     const cookies = await page.context().cookies();
     expect(cookies.some((c) => c.name === 'glamer-session')).toBe(true);

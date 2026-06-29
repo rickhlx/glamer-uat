@@ -12,7 +12,7 @@ import { env } from './env.js';
  * Sign in through the web UI (Firebase email/password). The frontend signs in
  * to Firebase in the browser, exchanges the ID token at POST /session, and
  * sets the httpOnly `glamer-session` cookie itself (lib/actions/signin.action.ts).
- * On success it redirects to /search/stylists (or a safe `redirect` referer).
+ * On success it redirects to /appointments (or a safe `redirect` referer).
  */
 export async function signInWeb(page: Page): Promise<void> {
   await page.goto('/signin');
@@ -34,9 +34,9 @@ export async function signInWeb(page: Page): Promise<void> {
  * visible content rather than hardcoding step numbers, then click "Next" until
  * the summary, where we submit. Returns once the confirmation screen shows.
  *
- * NOTE: this creates a real appointment request and (per finding F10) currently
- * consumes one of the stylist's slots permanently — use sparingly until F10 or a
- * UAT reset lands.
+ * NOTE: this creates a real appointment request against live staging — use
+ * sparingly. Cancelling/declining now releases the slot again (finding F10
+ * resolved), so it no longer permanently exhausts the stylist's availability.
  */
 export async function bookFirstAvailableViaWeb(
   page: Page,
