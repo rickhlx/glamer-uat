@@ -40,9 +40,10 @@ confirmed booking.
 - **Flow:** stylist edits availability on iOS → newly closed slots disappear from web booking options; opened slots appear.
 - **Acceptance:** web cannot book a slot the stylist has marked unavailable; no double-booking possible.
 
-### X-5 — Appointment completion → payment settles `[Important]` · Cross
+### X-5 — Appointment completion → payment settles `[Important]` · Cross `[no coverage — glamer-uat#10]`
 - **Flow:** appointment time passes → stylist marks complete on iOS → payment captured/settled → client sees receipt. **[CONFIRM]** who triggers completion and capture.
 - **Acceptance:** payment state correct; amounts and any platform fee reconcile; receipt available to client.
+- **Status:** not automated. A-6 covers only `mark-paid`; the `POST /appointments/{id}/complete` transition is untested. Tracked in glamer-uat#10 (API-runnable now).
 
 ---
 

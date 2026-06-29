@@ -6,15 +6,94 @@ they don't block the gate as noise but flip to a real failure the moment they're
 
 Severities follow [principles.md](./principles.md).
 
-**Status:** ✅ F1, F2, F7 fixed & verified. 🔴 Open: F4 (#366), F5 (#367), F6 (#368),
-F8 (#386), F9 (#387), F10 (#388), F11 (frontend — glamer-uat#2), **F12 (guest phone
-verification — missing table in UAT)**, **F13 (`contact.Social` null, not array)**.
+**Status:** ✅ F1, F2, F7, F9 (#387), F10 (#388), F12 (#428), F13 (#429), F14 (#442),
+F15 (#438), **F5 (#367), F8 (#386)** fixed & verified; **F6 (#368)** closed by backend
+(unverified — can't reproduce the duplicate-register scenario in UAT). 🔴 Open:
+F4 (#366), F11 (frontend — glamer-uat#2),
+F16 (#448 — `/stylists/{username}` 200 `oneOf` is ambiguous, spec-side).
 
 ---
 
-## F13 — `GET /stylists/{username}` returns `contact.Social: null`, should be array
+## F16 — `GET /stylists/{username}` 200 `oneOf` is ambiguous (matches both/neither variant)
 
-- **Repo:** **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/429 — **open**. Same class as F9.
+- **Repo:** spec / **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/448
+  — **closed on backend, but still fails here.** The backend likely fixed the spec *source*; our
+  local bundled `spec/glamer.openapi.yaml` is stale (remote `/openapi.yaml` is now multi-file).
+  Refresh the local spec to confirm before removing the guard; if it still fails after refresh, reopen.
+- **Severity:** P3 — conformance/spec-design gap on the public profile endpoint; surfaced after
+  F13 (`contact.Social`) was fixed.
+- **Surface:** API A-5 ("the full public profile conforms to spec").
+- **Actual:** the 200 response is `oneOf: [StylistPublicResponse, StylistAuthenticatedResponse]`,
+  and validation fails with `"must match exactly one schema in oneOf"` — the two variants overlap
+  (no discriminator), so a public response satisfies both (or neither). All individual fields now
+  conform (no null-where-array remains).
+- **Expected:** the response validates against exactly one schema — add a `discriminator`, make the
+  variants mutually exclusive (required fields unique to the authenticated variant), or collapse the
+  200 to a single schema.
+- **Test:** `tests/api/schema-conformance.spec.ts` ("the full public profile conforms to spec"),
+  `test.fail` → F16. The `workLocations[]` sub-check (separate test) passes.
+
+---
+
+## F15 — `GET /me/appointments` returns `data: null` for an empty result, should be `[]` ✅ FIXED
+
+- **Resolved:** verified green 2026-06-28 — the empty result now returns `200 { …, "data": [] }`;
+  guard removed.
+- **Repo:** **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/438
+  — **close as resolved**. Same class as F9/F13.
+- **Severity:** P3 — schema conformance gap on a core client read endpoint.
+- **Surface:** API A-5 / the client appointments read backing web C-7.
+- **Actual:** for an account with no appointments, the endpoint returns
+  `200 { "meta": {...}, "links": {}, "data": null }`. The spec declares `data` as an
+  array, so `null` fails conformance.
+- **Expected:** `200` with `data: []`.
+- **Note on #438:** #438 reports a `400` when the user has *no client profile*. With the
+  available UAT accounts the **status is already correct** (the stylist account, which has
+  no client appointments, returns `200`) — only the `null`-vs-`[]` body gap remains. The
+  exact profile-less `400` scenario couldn't be reproduced without a dedicated no-profile
+  account; if it still 400s for such accounts, that needs separate coverage.
+- **Test:** `tests/api/schema-conformance.spec.ts` (A-5 "/me/appointments returns an empty
+  array…"), `test.fail` → F15.
+
+---
+
+## F14 — Guest checkout `500`: duplicate active cart blocks `POST /carts/{id}/checkout` ✅ FIXED
+
+- **Resolved:** verified green 2026-06-28 — the `idx_carts_user_active` duplicate is gone and the
+  full A-7 happy path converts to an appointment. The flow also needs the cart's
+  `preferredStartTime` set before checkout (else `500 "cart must have a preferred start time"`);
+  `support/guest.ts` `createGuestCart` now `PUT`s a free slot. Guard removed.
+- **Repo:** **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/442 — **close as resolved**.
+- **Severity:** P2 (major) — the account-less guest happy path (A-7 / web C-8) can't
+  complete once the guest has any existing active cart; a guest who abandons a cart and
+  retries is permanently blocked.
+- **Surface:** API A-7 happy path. **Endpoint:** `POST /carts/{id}/checkout` (guest block).
+- **Actual:** with a valid cart + verified guest token, checkout returns:
+  ```json
+  { "type": "server_error", "title": "Internal Server Error",
+    "detail": "failed to associate guest client with cart: ERROR: duplicate key value violates unique constraint \"idx_carts_user_active\" (SQLSTATE 23505)" }
+  ```
+- **Expected:** `200` with a `CartCheckoutResponse` (`appointmentId`), converting the cart
+  to a `requested` appointment.
+- **Root cause (likely):** checkout resolves/creates a guest client by phone, then associates
+  the cart with that client — but `idx_carts_user_active` enforces one active cart per user,
+  and the guest already owns an active cart (a prior abandoned cart for the same phone).
+  Checkout should reconcile/deactivate the guest's other active cart(s), or scope the
+  uniqueness so the cart being checked out is the one that wins.
+- **Note:** surfaced only now that the **UAT test OTP** (backend #430) lets the suite reach
+  the happy path; the OTP plumbing itself is correct (request `202` → confirm `200` → genuine
+  token). F12 (the missing table) is resolved; this is a distinct, downstream defect.
+- **Repro:** `tests/api/guest-booking.spec.ts` ("a verified guest can book end-to-end"),
+  `test.fail` → F14. Also reproducible via curl (create guest cart → add item → request →
+  confirm → checkout).
+
+---
+
+## F13 — `GET /stylists/{username}` returns `contact.Social: null`, should be array ✅ FIXED
+
+- **Resolved:** verified green 2026-06-28 — `contact.Social` is now `[]`. Guard on this specific
+  field removed. (The full-profile conformance test stays guarded for a **separate** issue, F16.)
+- **Repo:** **glamer-backend**. **Issue:** https://github.com/rickhlx/glamer-backend/issues/429 — **close as resolved**. Same class as F9.
 - **Severity:** P3 (minor) — contract conformance gap on the public profile endpoint.
 - **Surface:** API A-5; the profile read backing web C-2 / the new workLocations enrichment.
 - **Actual:** the response includes `"contact": { "Social": null, ... }`; the spec declares
@@ -27,10 +106,14 @@ verification — missing table in UAT)**, **F13 (`contact.Social` null, not arra
 
 ---
 
-## F12 — Guest phone-verification endpoints `500`: `phone_verifications` table missing in UAT
+## F12 — Guest phone-verification endpoints `500`: `phone_verifications` table missing in UAT ✅ FIXED
 
+- **Resolved:** verified green 2026-06-28. The migration landed in UAT — `request`
+  now returns `202`/`400`/`429` and `confirm` returns the documented `400` for an
+  invalid code (the two A-7 tests went from `test.fail` to passing). `test.fail`
+  guards removed.
 - **Repo:** **glamer-backend** (likely a UAT deploy/migration gap, not app code).
-  **Issue:** https://github.com/rickhlx/glamer-backend/issues/428 — **open**.
+  **Issue:** https://github.com/rickhlx/glamer-backend/issues/428 — **close as resolved**.
   Test-enablement follow-up (UAT test OTP): https://github.com/rickhlx/glamer-backend/issues/430.
 - **Severity:** **P1 for journey A-7** — the entire account-less guest booking flow is
   non-functional in UAT (no phone can be verified, so no guest can check out).
@@ -80,9 +163,12 @@ verification — missing table in UAT)**, **F13 (`contact.Social` null, not arra
 
 ---
 
-## F10 — Canceled/declined appointments don't release their slot (availability leak)
+## F10 — Canceled/declined appointments don't release their slot (availability leak) ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/388 — **open**
+- **Resolved:** verified green 2026-06-28. Declining now frees the slot — the X-2
+  "a declined slot is released" test went from `test.fail` to passing; `test.fail`
+  guard removed. This also clears the slot-leak caveat on the real-booking helpers.
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/388 — **close as resolved**
 - **Severity:** P2. **Endpoints:** `POST /appointments/{id}/decline`, `DELETE /appointments/{id}`.
 - **Actual:** after a decline (`canceled_by_stylist`) or client cancel (`204`), the slot
   stays unavailable — `GET /stylists/{username}/availability` never offers it again
@@ -94,19 +180,22 @@ verification — missing table in UAT)**, **F13 (`contact.Social` null, not arra
 
 ---
 
-## F8 — Double-booking a slot returns `500` instead of `409`
+## F8 — Double-booking a slot returns `500` instead of `409` ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/386 — **open**
+- **Resolved:** verified green 2026-06-28 — a second booking of the same slot now returns `409`.
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/386 — **closed**.
 - **Severity:** P3. **Endpoint:** `POST /appointments`.
-- **Actual:** booking a taken slot → `500 "conflicting key value violates exclusion constraint"`.
-- **Expected:** `409 Conflict`. The constraint correctly prevents the double-booking; only the status code is wrong.
-- **Test:** `tests/api/availability.spec.ts` (A-4) asserts the second booking is rejected (passes today); the 409 expectation is tracked here.
+- **Test:** `tests/api/availability.spec.ts` (A-4) now asserts the second booking is `409` (was a
+  generic "not 201" + tracked note).
 
 ---
 
-## F9 — Appointment response `services[].includedAddons` is `null`, should be array
+## F9 — Appointment response `services[].includedAddons` is `null`, should be array ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/387 — **open**
+- **Resolved:** verified green 2026-06-28. The booking response now conforms — the
+  A-5 "booking response conforms" test went from `test.fail` to passing; `test.fail`
+  guard removed.
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/387 — **close as resolved**
 - **Severity:** P3. **Endpoint:** `POST /appointments` (and AppointmentResponse generally).
 - **Actual:** `includedAddons: null` → fails schema (`services/0/includedAddons: must be array`).
 - **Expected:** `[]` (or make the field nullable in the spec).
@@ -168,10 +257,11 @@ verification — missing table in UAT)**, **F13 (`contact.Social` null, not arra
 
 ---
 
-## F5 — `POST /appointments` returns `500` for missing/invalid location
+## F5 — `POST /appointments` returns `500` for missing/invalid location ✅ FIXED
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/367
-
+- **Resolved:** verified green 2026-06-28 — an invalid `locationId` now returns `400`.
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/367 — **closed**.
+- **Test:** `tests/api/booking-lifecycle.spec.ts` (A-3 "booking with an invalid location is rejected with 400").
 - **Severity:** P3 (minor) — validation surfaced as a server error.
 - **Endpoint:** `POST /appointments`.
 - **Actual:** with `locationType`/`locationId` omitted →
@@ -184,10 +274,11 @@ verification — missing table in UAT)**, **F13 (`contact.Social` null, not arra
 
 ---
 
-## F6 — `POST /me/register` returns `500` on duplicate, not `409`
+## F6 — `POST /me/register` returns `500` on duplicate, not `409` ☑️ CLOSED BY BACKEND (unverified)
 
-- **Issue:** https://github.com/rickhlx/glamer-backend/issues/368
-
+- **Issue:** https://github.com/rickhlx/glamer-backend/issues/368 — **closed by backend 2026-06-28.**
+  Not independently verified by UAT — reproducing the duplicate-register path safely needs a
+  throwaway account (re-registering our standing test client could mutate it). No guarded test.
 - **Severity:** P3 (minor).
 - **Endpoint:** `POST /me/register`.
 - **Actual:** re-registering an existing email →

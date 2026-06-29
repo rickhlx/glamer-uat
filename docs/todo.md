@@ -83,14 +83,19 @@ F3 was a test-data mistake (client account), not a backend bug — resolved.
 
 | ID | Issue | Sev | Summary |
 | --- | --- | --- | --- |
-| F4 | [#366](https://github.com/rickhlx/glamer-backend/issues/366) | P2 | Stylist-only endpoints `500` for non-stylists (should be `403`) |
-| F5 | [#367](https://github.com/rickhlx/glamer-backend/issues/367) | P3 | `POST /appointments` `500` on missing/invalid location (should be `400`) |
-| F6 | [#368](https://github.com/rickhlx/glamer-backend/issues/368) | P3 | `POST /me/register` `500` on duplicate email (should be `409`) |
-| F8 | [#386](https://github.com/rickhlx/glamer-backend/issues/386) | P3 | Double-booking `500` (should be `409`) |
-| F9 | [#387](https://github.com/rickhlx/glamer-backend/issues/387) | P3 | `services[].includedAddons` is `null` (should be `[]`) |
-| F10 | [#388](https://github.com/rickhlx/glamer-backend/issues/388) | P2 | Canceled/declined appointments don't release the slot (availability leak) |
-| F12 | [#428](https://github.com/rickhlx/glamer-backend/issues/428) | P1 | Guest phone-verification `500`s — `phone_verifications` table missing in UAT (blocks A-7; likely a migration/deploy gap) |
-| F13 | [#429](https://github.com/rickhlx/glamer-backend/issues/429) | P3 | `GET /stylists/{username}` `contact.Social` is `null`, should be `[]` (oneOf fails; same class as F9) |
+| F4 | [#366](https://github.com/rickhlx/glamer-backend/issues/366) | P2 | Stylist-only endpoints `500` for non-stylists (should be `403`) — _still open, re-verified 2026-06-28_ |
+| F16 | [#448](https://github.com/rickhlx/glamer-backend/issues/448) | P3 | `GET /stylists/{username}` 200 `oneOf` ambiguous — _#448 closed on backend but still fails locally; needs local spec refresh to confirm_ |
+| F6 | [#368](https://github.com/rickhlx/glamer-backend/issues/368) | P3 | `POST /me/register` `500` on duplicate email — _closed by backend; UAT-unverified (no safe repro)_ |
+
+✅ Resolved & verified 2026-06-28 (guards removed / assertions tightened):
+F9 ([#387](https://github.com/rickhlx/glamer-backend/issues/387)) `includedAddons`,
+F10 ([#388](https://github.com/rickhlx/glamer-backend/issues/388)) slot release on cancel/decline,
+F12 ([#428](https://github.com/rickhlx/glamer-backend/issues/428)) guest phone-verification table,
+F13 ([#429](https://github.com/rickhlx/glamer-backend/issues/429)) `contact.Social`,
+F14 ([#442](https://github.com/rickhlx/glamer-backend/issues/442)) guest checkout duplicate-cart,
+F15 ([#438](https://github.com/rickhlx/glamer-backend/issues/438)) `/me/appointments` empty array,
+F5 ([#367](https://github.com/rickhlx/glamer-backend/issues/367)) bad-location 400,
+F8 ([#386](https://github.com/rickhlx/glamer-backend/issues/386)) double-book 409.
 
 When a fix lands: re-run → the `test.fail` guard flips → remove the marker → close the issue.
 
@@ -100,28 +105,39 @@ When a fix lands: re-run → the `test.fail` guard flips → remove the marker �
 
 ### 1. Web client (`tests/web`) — real selectors wired; blocked on Vercel wall
 Selectors are now **real**, read from the live `glamer-frontend` (Next.js App Router)
-source, not placeholders. Routes: sign-in `/signin`, discovery `/search/stylists`,
-profile `/{username}`, booking modal `/{username}?booking=true` (multi-step:
-Services → Date&Time → Summary), appointments `/appointments`. Web auth is Firebase
+source, not placeholders. Routes: sign-in `/signin`, profile `/{username}`, booking
+modal `/{username}?booking=true` (multi-step: Services → Date&Time → Summary),
+appointments `/appointments` (also the post-login landing). Web auth is Firebase
 email/password; the frontend sets the `glamer-session` cookie itself.
+
+> **Route change (2026-06-28):** the standalone discovery listing page
+> `/search/stylists` was removed (now hard-404s, `x-matched-path: /404`) and sign-in
+> now lands on `/appointments`. C-1's expected URL was re-pointed and the C-2 listing
+> assertion was dropped (clients reach stylists by profile link); re-add a listing
+> test if a discovery index returns.
 
 - [x] Replace placeholder selectors with real ones (`support/web.ts` helpers + all C-\* specs).
 - [x] Confirm web auth: sign-in form `input[name=email|password]`, server action sets `glamer-session`.
 - [x] **Vercel deployment protection solved.** Bypass *cookie* minted in `globalSetup` →
   storageState, loaded only by web/cross (`playwright.config.ts`); secret in
   `VERCEL_AUTOMATION_BYPASS_SECRET`. (A header would leak to Sentry/Maps and break their CORS.)
-- [x] **C-1 sign in** (valid ✅; invalid guarded → **F11** crash, glamer-uat#2) and
-  **C-2 discover** (search + profile ✅) — green against live staging.
+- [x] **C-1 sign in** (valid ✅, lands on `/appointments`; invalid guarded → **F11** crash,
+  glamer-uat#2) and **C-2 discover** (profile ✅; listing dropped after `/search/stylists`
+  was removed) — green against live staging.
 - [x] **C-4 payment decline — NOT APPLICABLE on web** (request-to-book, "pay at location";
   no web payment UI). Documented + skipped; payment coverage lives in API A-6.
-- **[ ] C-3 booking + C-6 cancel + X-1 web step — blocked, tracked in glamer-uat#1.**
+- **[ ] C-3 booking + X-1 web step — blocked, tracked in glamer-uat#1.**
   Selectors are real; the booking-modal helper races the modal's server-action step
-  transitions, and the shared server-side cart makes it flaky. C-6's card menu trigger is
-  unlabeled. Needs transition-aware waits + a clean-cart/appointments reset (ties to F10).
+  transitions, and the shared server-side cart makes it flaky. (F10 is now resolved, so
+  the slot-leak caveat no longer applies — a clean-cart reset is still nice-to-have.)
   **Preferred fix is upstream:** [glamer-frontend#647](https://github.com/rickhlx/glamer-frontend/issues/647)
   — the modal gates `Next` on a server round-trip (optimistic update misses `canProceedToNext`)
   and transitions steps via full `redirect()` re-renders with no stable step signal. Once it
   lands (optimistic Next + `data-booking-step`), re-point the helper at the new affordances.
+- **[ ] C-6 cancel web step — blocked, tracked in glamer-uat#9.** Distinct from #1: the
+  appointment-card actions trigger (ellipsis) has no accessible name, so the menu can't be
+  opened by role/name. Preferred fix is an upstream `aria-label`; interim is a stable test-id
+  selector. The rest of the C-6 flow is already written.
 - X-3 is already fully API-driven and green.
 
 ### 2. CI (Step 6)
